@@ -1,6 +1,7 @@
-import * as THREE from 'https://cdn.skypack.dev/three@0.136';
+import * as THREE from 'https://cdn.skypack.dev/three@0.135';
+// import {TwoStepAudioLoader}  from "./resources/scripts/TwoStepAudioLoader";
 
-import {FirstPersonControls} from 'https://cdn.skypack.dev/three@0.136/examples/jsm/controls/FirstPersonControls.js';
+import {GLTFLoader} from 'https://cdn.skypack.dev/three@0.135/examples/jsm/loaders/GLTFLoader.js';
 
 
 
@@ -220,8 +221,20 @@ class FirstPersonCamera {
 
 class Sequence {
 	constructor() {
+		this.audioLoader_       = new THREE.AudioLoader();
+		this.audioListener      = new THREE.AudioListener();
+		this.audioMusicTime     = 0;
+		this.audioVoiceTime     = 0;
+		this.audioPrevMusicTime = 0;
+
+		this.currentSong     = null;
+		this.currentVoice    = null;
+		this.audioMusicTrack = '';                          /*TODO: WIP*/
+		this.audioVoiceTrack = '';                          /*TODO: WIP*/
+		/* this.loader = new TwoStepAudioLoader()           /*TODO: WIP*/
+
+		this.aHorror = null;
 		this.initialize_();
-		this.startTime = performance.now();
 	}
 
 
@@ -232,15 +245,17 @@ class Sequence {
 		this.initializePostFX_();
 		this.initializeUser_();
 		this.initializeAudio_();
+		this.loadHorror_();
 
 		this.toneShiftOne   = false;
 		this.toneShiftTwo   = false;
 		this.toneShiftThree = false;
 		this.toneShiftFour  = false;
 		this.toneShiftFive  = false;
-		this.walled         = false;
+		this.deWalled       = false;
+		this.horrorSet      = false;
 
-		this.previousRAF_   = null;
+		this.previousRAF_ = null;
 		this.raf_();
 		this.onWindowResize_();
 
@@ -248,79 +263,94 @@ class Sequence {
 	}
 
 
-	updateSequence(timeElapsed) {
+	async updateSequence(timeElapsed) {
+		// console.log(this.currentSong.currentTime);
+		// if (timeElapsed >= 17000 && this.deWalled !== true) {
 
-		if (timeElapsed >= 17000 && this.walled !== true) {
-			console.log("Initiated walling...");
+		//12 seconds
+		if (!this.toneShiftOne && !this.deWalled) {
+			console.log("Initiated dewalling...");
 
-			const concreteMaterial = this.loadMaterial_('concrete3-', 4);
+			if (this.currentSong.currentTime <= 45) {
 
-			const wall1 = new THREE.Mesh(
-				new THREE.BoxGeometry(100, 100, 4),
-				concreteMaterial);
-			wall1.position.set(0, -40, -50);
-			wall1.castShadow    = true;
-			wall1.receiveShadow = true;
-			this.scene_.add(wall1);
+				this.scene_.children.forEach(obj => {
+					if (obj.name === 'wall') {
+						obj.translateY(-0.05);
+					}
+				});
+				this.audioPrevMusicTime = this.currentSong.currentTime;
 
-			const wall2 = new THREE.Mesh(
-				new THREE.BoxGeometry(100, 100, 4),
-				concreteMaterial);
-			wall2.position.set(0, -40, 50);
-			wall2.castShadow    = true;
-			wall2.receiveShadow = true;
-			this.scene_.add(wall2);
+			}
+			else {
+				this.toneShiftOne = true;
+			}
+		}
 
-			const wall3 = new THREE.Mesh(
-				new THREE.BoxGeometry(4, 100, 100),
-				concreteMaterial);
-			wall3.position.set(50, -40, 0);
-			wall3.castShadow    = true;
-			wall3.receiveShadow = true;
-			this.scene_.add(wall3);
+		// 20 seconds
+		if (this.toneShiftOne && !this.toneShiftTwo && this.currentSong.currentTime >= 50) {
+			console.log("Tone shift #2");
 
-			const wall4 = new THREE.Mesh(
-				new THREE.BoxGeometry(4, 100, 100),
-				concreteMaterial);
-			wall4.position.set(-50, -40, 0);
-			wall4.castShadow    = true;
-			wall4.receiveShadow = true;
-			this.scene_.add(wall4);
 
-			const wall_meshes = [wall1, wall2, wall3, wall4];
 
-			for (let i = 0; i < wall_meshes.length; ++i) {
-				const b = new THREE.Box3();
-				b.setFromObject(wall_meshes[i]);
-				this.objects_.push(b);
+			if (this.currentSong.currentTime >= 5555) {
+				this.toneShiftTwo = true;
+				this.deWalled     = true;
+
+
 			}
 
-			this.walled = true;
-
-			// const checkerboard      = mapLoader.load('resources/tileKit/checkerboard.png');
-			// checkerboard.anisotropy = maxAnisotropy;
-			// checkerboard.wrapS      = THREE.RepeatWrapping;
-			// checkerboard.wrapT      = THREE.RepeatWrapping;
-			// checkerboard.repeat.set(32, 32);
-			// checkerboard.encoding = THREE.sRGBEncoding;
 		}
 
-		if (timeElapsed >= 90000 && this.toneShiftOne !== true) {
-			console.log("Tone shift #1");
-			this.toneShiftOne = true;
-
-		}
-
-		if (timeElapsed >= 140000 && this.toneShiftTwo !== true) {
-			console.log("Tone shift #2");
-			this.toneShiftTwo = true;
-		}
-
-		if (timeElapsed >= 152000 && this.toneShiftThree !== true) {
+		if (this.toneShiftTwo && !this.toneShiftThree && this.currentSong.currentTime >= 50) {
 			console.log("Tone shift #3");
 			this.toneShiftThree = true;
+
+			// for (var i = 0; i < 4; i++) {
+			// 	var selectedObject = this.scene_.getObjectByName('wall');
+			// 	this.scene_.remove(selectedObject);
+			// }
 		}
 
+		if (this.toneShiftThree && !this.toneShiftFour && this.currentSong.currentTime >= 135) {
+			console.log("Tone shift #4");
+			this.toneShiftFour = true;
+		}
+
+		if (this.toneShiftFour && !this.toneShiftFive && this.currentSong.currentTime >= 50) {
+			console.log("Tone shift #5");
+			this.toneShiftFive = true;
+		}
+		// this.currentSong.currentTime >= 135
+
+	}
+
+
+	loadHorror_() {
+		const gltfLoader = new GLTFLoader();
+
+		gltfLoader.load(
+			'./resources/entities/demon/scene.gltf',
+			(gltf) => {
+				const root = gltf.scene;
+				root.position.set(25, 2.5, 0);
+				this.scene_.add(root);
+				this.aHorror = root;
+			},
+			// called while loading is progressing
+			function (xhr) {
+
+				console.log((xhr.loaded / xhr.total * 100) + '% loaded');
+
+			},
+			// called when loading has errors
+			function (error) {
+
+				console.log('An error happened');
+
+			}
+		);
+		this.horrorSet = true;
+		console.log("Horror set...");
 	}
 
 
@@ -339,7 +369,8 @@ class Sequence {
 		this.threejs_.setSize(window.innerWidth, window.innerHeight);
 		this.threejs_.physicallyCorrectLights = true;
 		this.threejs_.outputEncoding          = THREE.sRGBEncoding;
-
+		this.threejs_.gammaFactor             = 1.2;
+		this.threejs_.gammaOutput             = 2.2;
 		document.body.appendChild(this.threejs_.domElement);
 
 		window.addEventListener('resize', () => {
@@ -374,7 +405,7 @@ class Sequence {
 
 		texture.encoding       = THREE.sRGBEncoding;
 		this.scene_.background = texture;
-
+		this.scene_.background.lig
 		const mapLoader     = new THREE.TextureLoader();
 		const maxAnisotropy = this.threejs_.capabilities.getMaxAnisotropy();
 
@@ -393,16 +424,17 @@ class Sequence {
 		plane.rotation.x    = -Math.PI / 2;
 		this.scene_.add(plane);
 
-		// manitou
-		const box = new THREE.Mesh(
+		//#################################### manitou ####################################\\
+
+		const manitou = new THREE.Mesh(
 			new THREE.BoxGeometry(4, 4, 4),
 			this.loadMaterial_('vintage-tile1_', 0.2));
-		box.position.set(10, 2, 0);
-		box.castShadow    = true;
-		box.receiveShadow = true;
-		this.scene_.add(box);
+		manitou.position.set(10, 2, 0);
+		manitou.castShadow    = true;
+		manitou.receiveShadow = true;
+		this.scene_.add(manitou);
 
-		const meshes = [plane, box];
+		const meshes = [plane, manitou];
 
 		this.objects_ = [];
 
@@ -411,6 +443,56 @@ class Sequence {
 			b.setFromObject(meshes[i]);
 			this.objects_.push(b);
 		}
+
+
+		const concreteMaterial = this.loadMaterial_('concrete3-', 4);
+
+		const wall1 = new THREE.Mesh(
+			new THREE.BoxGeometry(100, 200, 4),
+			concreteMaterial);
+		wall1.name  = 'wall';
+		wall1.position.set(0, -40, -20);
+		wall1.castShadow    = true;
+		wall1.receiveShadow = true;
+		this.scene_.add(wall1);
+
+		const wall2 = new THREE.Mesh(
+			new THREE.BoxGeometry(100, 200, 4),
+			concreteMaterial);
+		wall2.name  = 'wall';
+		wall2.position.set(0, -40, 20);
+		wall2.castShadow    = true;
+		wall2.receiveShadow = true;
+		this.scene_.add(wall2);
+
+		const wall3 = new THREE.Mesh(
+			new THREE.BoxGeometry(4, 200, 100),
+			concreteMaterial);
+		wall3.name  = 'wall';
+		wall3.position.set(20, -40, 0);
+		wall3.castShadow    = true;
+		wall3.receiveShadow = true;
+		this.scene_.add(wall3);
+
+		const wall4 = new THREE.Mesh(
+			new THREE.BoxGeometry(4, 200, 100),
+			concreteMaterial);
+		wall4.name  = 'wall';
+		wall4.position.set(-20, -40, 0);
+		wall4.castShadow    = true;
+		wall4.receiveShadow = true;
+		this.scene_.add(wall4);
+
+		const wall_meshes = [wall1, wall2, wall3, wall4];
+
+		for (let i = 0; i < wall_meshes.length; ++i) {
+			const b = new THREE.Box3().setFromObject(wall_meshes[i]);
+			b.name  = 'objWall';
+			this.objects_.push(b);
+		}
+
+
+
 
 	}
 
@@ -488,20 +570,38 @@ class Sequence {
 
 
 	initializeAudio_() {
-		const listener = new THREE.AudioListener();
-		this.camera_.add(listener);
 
-		// create a global audio source
-		const sound = new THREE.Audio(listener);
 
-		// load a sound and set idt as the Audio object's buffer
-		this.audioLoader_ = new THREE.AudioLoader();
-		this.audioLoader_.load('resources/audio/Glass.mp3', function (buffer) {
-			sound.setBuffer(buffer);
-			sound.setLoop(true);
-			sound.setVolume(0.5);
-			sound.play();
+		// load a sound and set it as the Audio object's buffer
+		this.audioSwitch('resources/audio/Glass.mp3', 1);
+
+	}
+
+
+	playMusicAudio() {
+		return new Promise(response => {
+			if (this.currentSong.play()) {
+				if (this.currentSong.ended) {
+					response = true;
+				}
+				else {
+
+				}
+			}
 		});
+
+	}
+
+
+	audioSwitch(audioUrl, audioType) {
+		if (audioType) {
+			this.currentSong        = new Audio(audioUrl);
+			this.currentSong.volume = 0.5;
+
+			this.playMusicAudio();
+
+		}
+
 	}
 
 
@@ -524,7 +624,7 @@ class Sequence {
 			}
 
 			this.step_(t - this.previousRAF_);
-			this.updateSequence(performance.now() - this.startTime);
+			this.updateSequence(performance.now() - this.startTime, this.audioMusicTime);
 			this.threejs_.autoClear = true;
 			this.threejs_.render(this.scene_, this.camera_);
 			this.threejs_.autoClear = false;
@@ -537,17 +637,69 @@ class Sequence {
 
 	step_(timeElapsed) {
 		// Step speed
-		const timeElapsedS = timeElapsed * 0.00051;
+		const timeElapsedS = timeElapsed * 0.00050;
 		this.fpsCamera_.update(timeElapsedS);
 		// console.log(this.camera_.position);
 
 	}
 
 }
+
+
+
 /*###################END OF SEQUENCE CLASS###################*/
 
 
-/*###################START OF SEQUENCE CLASS###################*/
+/*###################START OF WALLING FUNCTION###################*/
+/*function WallingSequence(material, sceneRef, objectsRef) {
+ const wall1 = new THREE.Mesh(
+ new THREE.BoxGeometry(100, 100, 4),
+ material);
+ wall1.position.set(0, -40, -50);
+ wall1.castShadow    = true;
+ wall1.receiveShadow = true;
+ sceneRef.add(wall1);
+
+ const wall2 = new THREE.Mesh(
+ new THREE.BoxGeometry(100, 100, 4),
+ material);
+ wall2.position.set(0, -40, 50);
+ wall2.castShadow    = true;
+ wall2.receiveShadow = true;
+ sceneRef.add(wall2);
+
+ const wall3 = new THREE.Mesh(
+ new THREE.BoxGeometry(4, 100, 100),
+ material);
+ wall3.position.set(50, -40, 0);
+ wall3.castShadow    = true;
+ wall3.receiveShadow = true;
+ sceneRef.add(wall3);
+
+ const wall4 = new THREE.Mesh(
+ new THREE.BoxGeometry(4, 100, 100),
+ material);
+ wall4.position.set(-50, -40, 0);
+ wall4.castShadow    = true;
+ wall4.receiveShadow = true;
+ sceneRef.add(wall4);
+
+ const wall_meshes = [wall1, wall2, wall3, wall4];
+
+ for (let i = 0; i < wall_meshes.length; ++i) {
+ const b = new THREE.Box3();
+ b.setFromObject(wall_meshes[i]);
+ objectsRef.push(b);
+ }
+
+ return true;
+ }*/
+
+
+
+/*###################END OF WALLING FUNCTION###################*/
+
+
 
 
 let _APP = null;

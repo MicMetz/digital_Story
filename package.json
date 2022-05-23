@@ -2,6 +2,7 @@
   "name": "DigitalStory",
   "version": "1.0.0",
   "dependencies": {
-    "three": "^0.140.2"
+    "three": "^0.140.2",
+    "three-obj-mtl-loader": "^1.0.3"
   }
 }
