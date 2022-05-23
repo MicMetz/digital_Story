@@ -1,7 +1,5 @@
-import * as THREE from 'https://cdn.skypack.dev/three@0.135';
-// import {TwoStepAudioLoader}  from "./resources/scripts/TwoStepAudioLoader";
-
-import {GLTFLoader} from 'https://cdn.skypack.dev/three@0.135/examples/jsm/loaders/GLTFLoader.js';
+import * as THREE   from 'three';
+import {GLTFLoader} from 'GLTFLoader';
 
 
 
@@ -219,6 +217,59 @@ class FirstPersonCamera {
 
 
 
+function MouseAudio(element, audio) {
+	this.div = element;
+	this.audio = audio;
+	this.timeout = null;
+
+	this.init();
+}
+
+MouseAudio.prototype.init = function() {
+	var self = this;
+
+	this.div.addEventListener('mouseover', function(event) {
+		console.log('moused over - timeout set');
+
+		if (self.timeout) {
+			clearTimeout(self.timeout);
+		}
+
+		self.timeout = setTimeout(function() {
+			console.log('playing sound');
+			self.audio.play();
+			self.timeout = null;
+		}, 10000);
+	});
+
+	this.div.addEventListener('mouseout', function() {
+		if (self.timeout) {
+			console.log('moused out - timeout cancelled');
+			clearTimeout(self.timeout);
+			self.timeout = null;
+		} else if (!self.audio.paused) {
+			console.log('moused out - pausing sound');
+			self.audio.pause();
+			self.audio.currentTime = 0;
+		}
+	});
+
+	this.div.addEventListener('click', function() {
+		if (self.timeout) {
+			console.log('clicked - timeout cancelled');
+			clearTimeout(self.timeout);
+			self.timeout = null;
+		} else if (!self.audio.paused) {
+			console.log('clicked - pausing sound');
+			self.audio.pause();
+			self.audio.currentTime = 0;
+		}
+	});
+};
+
+// this.mouseAudio = new MouseAudio(document.getElementById('canvas'), document.getElementById('audio'));
+
+
 class Sequence {
 	constructor() {
 		this.audioLoader_       = new THREE.AudioLoader();
@@ -232,50 +283,96 @@ class Sequence {
 		this.audioMusicTrack = '';                          /*TODO: WIP*/
 		this.audioVoiceTrack = '';                          /*TODO: WIP*/
 		/* this.loader = new TwoStepAudioLoader()           /*TODO: WIP*/
+		this.previousRAF_ = null;
 
-		this.aHorror = null;
-		this.initialize_();
-	}
+		this.loadedRender = false;
+		this.loadedLights = false;
+		this.loadedHell   = false;
+		this.loadedPost   = false;
+		this.loadedUser   = false;
+		this.loadedAudio  = false;
+		this.loadedHorror = false;
+		this.isReady        = false;
 
-
-	initialize_() {
-		this.initializeRenderer_();
-		this.initializeLights_();
-		this.initializeHellScene_();
-		this.initializePostFX_();
-		this.initializeUser_();
-		this.initializeAudio_();
-		this.loadHorror_();
+		this.loaderList_ = [
+			this.loadedRender,
+			this.loadedLights,
+			this.loadedHell,
+			this.loadedPost,
+			this.loadedUser,
+			this.loadedAudio,
+			this.loadedHorror
+		];
 
 		this.toneShiftOne   = false;
 		this.toneShiftTwo   = false;
 		this.toneShiftThree = false;
 		this.toneShiftFour  = false;
 		this.toneShiftFive  = false;
-		this.deWalled       = false;
-		this.horrorSet      = false;
+		this.encased        = false;
 
-		this.previousRAF_ = null;
-		this.raf_();
+		this.manitou = null;
+		this.aHorror = null;
+
+		this.loadingScreen();
+		this.initialize_().catch();
+	}
+
+
+	async initialize_() {
+		await this.initializeRenderer_();
+		await this.initializeLights_();
+		await this.initializeHellScene_();
+		await this.initializePostFX_();
+		await this.initializeUser_();
+		await this.initializeAudio_();
+
 		this.onWindowResize_();
+		this.setReady(true);
 
+		console.log("Ready!")
+		await this.musicSwitch().next();
+		this.raf_();
 
 	}
 
 
+	setReady(b) {
+		this.isReady = b;
+	}
+
+	checkReady() {
+		return this.isReady;
+	}
+
+	*loadingScreen() {
+		while (!this.checkReady()) {
+			document.body.classList.add('load-cover');
+			document.addEventListener("any", function(event) {
+				event.preventDefault();
+			});
+			window.addEventListener("any", function(event) {
+				event.preventDefault();
+			});
+			yield;
+		}
+		document.body.classList.remove('load-cover');
+
+	}
+
 	async updateSequence(timeElapsed) {
 		// console.log(this.currentSong.currentTime);
-		// if (timeElapsed >= 17000 && this.deWalled !== true) {
+		// if (timeElapsed >= 17000 && this.encased !== true) {
 
 		//12 seconds
-		if (!this.toneShiftOne && !this.deWalled) {
-			console.log("Initiated dewalling...");
+		if (!this.toneShiftOne && !this.encased) {
+			// console.log("Initiated dewalling...");
 
 			if (this.currentSong.currentTime <= 45) {
 
 				this.scene_.children.forEach(obj => {
 					if (obj.name === 'wall') {
-						obj.translateY(-0.05);
+						obj.translateY(0.05);
 					}
 				});
 				this.audioPrevMusicTime = this.currentSong.currentTime;
@@ -283,18 +380,18 @@ class Sequence {
 			}
 			else {
 				this.toneShiftOne = true;
+				console.log("Tone shift #2");
 			}
 		}
 
 		// 20 seconds
 		if (this.toneShiftOne && !this.toneShiftTwo && this.currentSong.currentTime >= 50) {
-			console.log("Tone shift #2");
 
 
 
 			if (this.currentSong.currentTime >= 5555) {
 				this.toneShiftTwo = true;
-				this.deWalled     = true;
+				this.encased      = true;
 
 
 			}
@@ -331,8 +428,9 @@ class Sequence {
 		gltfLoader.load(
 			'./resources/entities/demon/scene.gltf',
 			(gltf) => {
-				const root = gltf.scene;
-				root.position.set(25, 2.5, 0);
+				const root         = gltf.scene;
+				root.lightingColor = '#9B7441';
+				root.position.set(10, -20, 0);
 				this.scene_.add(root);
 				this.aHorror = root;
 			},
@@ -340,6 +438,8 @@ class Sequence {
 			function (xhr) {
 
 				console.log((xhr.loaded / xhr.total * 100) + '% loaded');
+				this.loadedHorror = true;
+				console.log("Horror set...");
 
 			},
 			// called when loading has errors
@@ -349,17 +449,16 @@ class Sequence {
 
 			}
 		);
-		this.horrorSet = true;
-		console.log("Horror set...");
 	}
 
 
-	initializeUser_() {
+	async initializeUser_() {
 		this.fpsCamera_ = new FirstPersonCamera(this.camera_, this.objects_);
+		return this.loadedUser = true;
 	}
 
 
-	initializeRenderer_() {
+	async initializeRenderer_() {
 		this.threejs_                   = new THREE.WebGLRenderer({
 			antialias: false,
 		});
@@ -380,7 +479,7 @@ class Sequence {
 		const fov    = 60;
 		const aspect = 1920 / 1080;
 		const near   = 1.0;
-		const far    = 1000.0;
+		const far    = 500.0;
 		this.camera_ = new THREE.PerspectiveCamera(fov, aspect, near, far);
 		this.camera_.position.set(0, 2, 0);
 
@@ -389,10 +488,12 @@ class Sequence {
 		this.uiCamera_ = new THREE.OrthographicCamera(
 			-1, 1, 1 * aspect, -1 * aspect, 1, 1000);
 		this.uiScene_  = new THREE.Scene();
+
+		return this.loadedRender = true;
 	}
 
 
-	initializeHellScene_() {
+	async initializeHellScene_() {
 		const loader  = new THREE.CubeTextureLoader();
 		const texture = loader.load([
 			'./resources/skybox/sunsetflat_ft.jpg',
@@ -403,11 +504,11 @@ class Sequence {
 			'./resources/skybox/sunsetflat_lf.jpg',
 		]);
 
-		texture.encoding       = THREE.sRGBEncoding;
-		this.scene_.background = texture;
-		this.scene_.background.lig
-		const mapLoader     = new THREE.TextureLoader();
-		const maxAnisotropy = this.threejs_.capabilities.getMaxAnisotropy();
+		texture.encoding                     = THREE.sRGBEncoding;
+		this.scene_.background               = texture;
+		this.scene_.background.lightingColor = '#9B7441';
+		const mapLoader                      = new THREE.TextureLoader();
+		const maxAnisotropy                  = this.threejs_.capabilities.getMaxAnisotropy();
 
 		const trak_base      = mapLoader.load('resources/tileKit/trak_base.jpg');
 		trak_base.anisotropy = maxAnisotropy;
@@ -424,17 +525,17 @@ class Sequence {
 		plane.rotation.x    = -Math.PI / 2;
 		this.scene_.add(plane);
 
-		//#################################### manitou ####################################\\
+		//#################################### this.manitou ####################################\\
 
-		const manitou = new THREE.Mesh(
+		this.manitou = new THREE.Mesh(
 			new THREE.BoxGeometry(4, 4, 4),
 			this.loadMaterial_('vintage-tile1_', 0.2));
-		manitou.position.set(10, 2, 0);
-		manitou.castShadow    = true;
-		manitou.receiveShadow = true;
-		this.scene_.add(manitou);
+		this.manitou.position.set(10, 10, 0);
+		this.manitou.castShadow    = true;
+		this.manitou.receiveShadow = true;
+		this.scene_.add(this.manitou);
 
-		const meshes = [plane, manitou];
+		const meshes = [plane, this.manitou];
 
 		this.objects_ = [];
 
@@ -445,13 +546,13 @@ class Sequence {
 		}
 
 
-		const concreteMaterial = this.loadMaterial_('concrete3-', 4);
+		const concreteMaterial = await Promise.all([this.loadMaterial_('concrete3-', 4)]);
 
 		const wall1 = new THREE.Mesh(
 			new THREE.BoxGeometry(100, 200, 4),
 			concreteMaterial);
 		wall1.name  = 'wall';
-		wall1.position.set(0, -40, -20);
+		wall1.position.set(0, -200, -20);
 		wall1.castShadow    = true;
 		wall1.receiveShadow = true;
 		this.scene_.add(wall1);
@@ -460,7 +561,7 @@ class Sequence {
 			new THREE.BoxGeometry(100, 200, 4),
 			concreteMaterial);
 		wall2.name  = 'wall';
-		wall2.position.set(0, -40, 20);
+		wall2.position.set(0, -200, 20);
 		wall2.castShadow    = true;
 		wall2.receiveShadow = true;
 		this.scene_.add(wall2);
@@ -469,7 +570,7 @@ class Sequence {
 			new THREE.BoxGeometry(4, 200, 100),
 			concreteMaterial);
 		wall3.name  = 'wall';
-		wall3.position.set(20, -40, 0);
+		wall3.position.set(20, -200, 0);
 		wall3.castShadow    = true;
 		wall3.receiveShadow = true;
 		this.scene_.add(wall3);
@@ -478,7 +579,7 @@ class Sequence {
 			new THREE.BoxGeometry(4, 200, 100),
 			concreteMaterial);
 		wall4.name  = 'wall';
-		wall4.position.set(-20, -40, 0);
+		wall4.position.set(-20, -200, 0);
 		wall4.castShadow    = true;
 		wall4.receiveShadow = true;
 		this.scene_.add(wall4);
@@ -492,7 +593,7 @@ class Sequence {
 		}
 
 
-
+		return this.loadedHorror = true;
 
 	}
 
@@ -565,7 +666,8 @@ class Sequence {
 	}
 
 
-	initializePostFX_() {
+	async initializePostFX_() {
+		return this.loadedPost = true;
 	}
 
 
@@ -600,9 +702,12 @@ class Sequence {
 
 			this.playMusicAudio();
 
-		}
+
 
 	}
+
+
+
 
 
 	onWindowResize_() {
@@ -622,6 +727,8 @@ class Sequence {
 			if (this.previousRAF_ === null) {
 				this.previousRAF_ = t;
 			}
+
+			this.loadingScreen().next();
 
 			this.step_(t - this.previousRAF_);
 			this.updateSequence(performance.now() - this.startTime, this.audioMusicTime);

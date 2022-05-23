@@ -7,3 +7,11 @@ body {
   padding: 0;
   overscroll-behavior: none;
 }
+
+#canvas {
+
+}
+
+.load-cover {
+  visibility: hidden;
+}
