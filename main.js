@@ -231,12 +231,12 @@ class Sequence {
 		this.audioPrevMusicTime = 0;
 
 		// this.currentSong     = new Audio();
-		this.currentSong     = null;
-		this.isPlaying       = false;
-		this.isPlayable      = true;
-		this.currentVoice    = new Audio();
+		this.currentSong  = null;
+		this.isPlaying    = false;
+		this.isPlayable   = true;
+		this.currentVoice = new Audio();
 		/*this.audioMusicTrack = '';                          /!*TODO: WIP*!/
-		this.audioVoiceTrack = '';                          /!*TODO: WIP*!/*/
+		 this.audioVoiceTrack = '';                          /!*TODO: WIP*!/*/
 		/* this.loader = new TwoStepAudioLoader()           /*TODO: WIP*/
 		this.previousRAF_ = null;
 
@@ -326,9 +326,10 @@ class Sequence {
 
 		if (this.isPlaying) {
 			if (!this.toneShiftOne && !this.encased) {
-				// // console.log("Initiated dewalling...");
+				console.log("Initiated walling...");
 
 				if (this.currentSong.currentTime <= 45) {
+					console.log("Tone shift #1");
 
 					this.scene_.children.forEach(obj => {
 						if (obj.name === 'wall') {
@@ -341,15 +342,16 @@ class Sequence {
 				else {
 					this.toneShiftOne = true;
 					this.encased      = true;
-					// console.log("Tone shift #2");
 				}
 			}
 
 			// 20 seconds
 			if (this.toneShiftOne && !this.toneShiftTwo && this.currentSong.currentTime >= 50) {
+				console.log("Tone shift #2");
 
 				this.manitou           = null;
-				this.aHorror.positionY = 7;
+				// this.aHorror.positionY = 7;
+				this.aHorror.position.set(this.aHorror.positionX, 8, this.aHorror.positionZ);
 
 				if (this.currentSong.currentTime >= 5555) {
 					this.toneShiftTwo = true;
@@ -361,7 +363,7 @@ class Sequence {
 			}
 
 			if (this.toneShiftTwo && !this.toneShiftThree && this.currentSong.currentTime >= 50) {
-				// console.log("Tone shift #3");
+				console.log("Tone shift #3");
 				this.toneShiftThree = true;
 
 				// for (var i = 0; i < 4; i++) {
@@ -371,7 +373,7 @@ class Sequence {
 			}
 
 			if (this.toneShiftThree && !this.toneShiftFour && this.currentSong.currentTime >= 135) {
-				// console.log("Tone shift #4");
+				console.log("Tone shift #4");
 				this.toneShiftFour = true;
 			}
 
@@ -386,15 +388,16 @@ class Sequence {
 	}
 
 
-	loadHorror_() {
+	async loadHorror_() {
 		const gltfLoader = new GLTFLoader();
 
-		this.aHorror = gltfLoader.load(
+		this.aHorror = await Promise.all([gltfLoader.load(
 			'./resources/entities/demon/scene.gltf',
 			(gltf) => {
 				const root         = gltf.scene;
 				root.lightingColor = '#9B7441';
-				root.position.set(10, -20, 0);
+				// root.position.set(10, -20, 0);
+				root.position.set(10, 8, 0);
 				this.scene_.add(root);
 			},
 			// called while loading is progressing
@@ -402,16 +405,16 @@ class Sequence {
 
 				// console.log((xhr.loaded / xhr.total * 100) + '% loaded');
 				this.loadedHorror = true;
-				// console.log("Horror set...");
+				console.log("Horror set...");
 
 			},
 			// called when loading has errors
 			function (error) {
 
-				// console.log('An error happened');
+				console.log('An error happened');
 
 			}
-		);
+		)]);
 	}
 
 
@@ -471,14 +474,14 @@ class Sequence {
 		this.scene_.background               = texture;
 		this.scene_.background.lightingColor = '#9B7441';
 		// this.scene_.background.intensity
-		const light = new THREE.AmbientLight( 0x404040 ); // soft white light
-		this.scene_.add( light );
+		const light                          = new THREE.AmbientLight(0x404040); // soft white light
+		this.scene_.add(light);
 		console.log("Ambient light loaded");
 		light.intensity = 5;
 		console.log(light.intensity);
 
-		const mapLoader                      = new THREE.TextureLoader();
-		const maxAnisotropy                  = this.threejs_.capabilities.getMaxAnisotropy();
+		const mapLoader     = new THREE.TextureLoader();
+		const maxAnisotropy = this.threejs_.capabilities.getMaxAnisotropy();
 
 		const trak_base      = mapLoader.load('resources/tileKit/trak_base.jpg');
 		trak_base.anisotropy = maxAnisotropy;
@@ -562,7 +565,7 @@ class Sequence {
 			this.objects_.push(b);
 		}
 
-
+		await  this.loadHorror_();
 		return this.loadedHorror = true;
 
 	}
