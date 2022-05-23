@@ -140,7 +140,7 @@ function OceanScene(canvas) {
 
 
 const canvas       = document.getElementById("canvas");
-const sceneManager = new SceneManager(canvas);
+const sceneManager = new OceanScene(canvas);
 
 
 function animate() {

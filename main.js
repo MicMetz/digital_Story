@@ -46,8 +46,8 @@ class InputController {
 
 
 	onMouseMove_(e) {
-		this.current_.mouseX = e.pageX - window.innerWidth / 2;
-		this.current_.mouseY = e.pageY - window.innerHeight / 2;
+		this.current_.mouseX = e.pageX - window.innerWidth / 90;
+		this.current_.mouseY = e.pageY - window.innerHeight / 90;
 
 		if (this.previous_ === null) {
 			this.previous_ = {...this.current_};
@@ -218,55 +218,6 @@ class FirstPersonCamera {
 
 
 
-function MouseAudio(element, audio) {
-	this.div = element;
-	this.audio = audio;
-	this.timeout = null;
-
-	this.init();
-}
-
-MouseAudio.prototype.init = function() {
-	var self = this;
-
-	this.div.addEventListener('mouseover', function(event) {
-		console.log('moused over - timeout set');
-
-		if (self.timeout) {
-			clearTimeout(self.timeout);
-		}
-
-		self.timeout = setTimeout(function() {
-			console.log('playing sound');
-			self.audio.play();
-			self.timeout = null;
-		}, 10000);
-	});
-
-	this.div.addEventListener('mouseout', function() {
-		if (self.timeout) {
-			console.log('moused out - timeout cancelled');
-			clearTimeout(self.timeout);
-			self.timeout = null;
-		} else if (!self.audio.paused) {
-			console.log('moused out - pausing sound');
-			self.audio.pause();
-			self.audio.currentTime = 0;
-		}
-	});
-
-	this.div.addEventListener('click', function() {
-		if (self.timeout) {
-			console.log('clicked - timeout cancelled');
-			clearTimeout(self.timeout);
-			self.timeout = null;
-		} else if (!self.audio.paused) {
-			console.log('clicked - pausing sound');
-			self.audio.pause();
-			self.audio.currentTime = 0;
-		}
-	});
-};
 
 // this.mouseAudio = new MouseAudio(document.getElementById('canvas'), document.getElementById('audio'));
 
@@ -279,10 +230,13 @@ class Sequence {
 		this.audioVoiceTime     = 0;
 		this.audioPrevMusicTime = 0;
 
+		// this.currentSong     = new Audio();
 		this.currentSong     = null;
-		this.currentVoice    = null;
-		this.audioMusicTrack = '';                          /*TODO: WIP*/
-		this.audioVoiceTrack = '';                          /*TODO: WIP*/
+		this.isPlaying       = false;
+		this.isPlayable      = true;
+		this.currentVoice    = new Audio();
+		/*this.audioMusicTrack = '';                          /!*TODO: WIP*!/
+		this.audioVoiceTrack = '';                          /!*TODO: WIP*!/*/
 		/* this.loader = new TwoStepAudioLoader()           /*TODO: WIP*/
 		this.previousRAF_ = null;
 
@@ -293,7 +247,7 @@ class Sequence {
 		this.loadedUser   = false;
 		this.loadedAudio  = false;
 		this.loadedHorror = false;
-		this.isReady        = false;
+		this.isReady      = false;
 
 		this.loaderList_ = [
 			this.loadedRender,
@@ -315,8 +269,9 @@ class Sequence {
 		this.manitou = null;
 		this.aHorror = null;
 
-		this.loadingScreen();
-		this.initialize_().catch();
+		// this.loadingScreen();
+		this.initialize_();
+
 	}
 
 
@@ -330,9 +285,10 @@ class Sequence {
 
 		this.onWindowResize_();
 		this.setReady(true);
+		// this.loadingScreen().next();
 
-		console.log("Ready!")
-		await this.musicSwitch().next();
+		// console.log("Ready!")
+
 		this.raf_();
 
 	}
@@ -342,83 +298,90 @@ class Sequence {
 		this.isReady = b;
 	}
 
+
 	checkReady() {
 		return this.isReady;
 	}
 
-	*loadingScreen() {
-		while (!this.checkReady()) {
-			document.body.classList.add('load-cover');
-			document.addEventListener("any", function(event) {
-				event.preventDefault();
-			});
-			window.addEventListener("any", function(event) {
-				event.preventDefault();
-			});
-			yield;
-		}
-		document.body.classList.remove('load-cover');
 
-	}
+	//
+	// * loadingScreen() {
+	// 	while (!this.checkReady()) {
+	// 		document.body.classList.add('load-cover');
+	// 		document.addEventListener("any", function (event) {
+	// 			event.preventDefault();
+	// 		});
+	// 		window.addEventListener("any", function (event) {
+	// 			event.preventDefault();
+	// 		});
+	// 		yield;
+	// 	}
+	// 	document.body.classList.remove('load-cover');
+	//
+	// }
 
-	async updateSequence(timeElapsed) {
+
+	updateSequence(timeElapsed) {
 		// console.log(this.currentSong.currentTime);
-		// if (timeElapsed >= 17000 && this.encased !== true) {
 
-		//12 seconds
-		if (!this.toneShiftOne && !this.encased) {
-			// console.log("Initiated dewalling...");
+		if (this.isPlaying) {
+			if (!this.toneShiftOne && !this.encased) {
+				// // console.log("Initiated dewalling...");
 
-			if (this.currentSong.currentTime <= 45) {
+				if (this.currentSong.currentTime <= 45) {
 
-				this.scene_.children.forEach(obj => {
-					if (obj.name === 'wall') {
-						obj.translateY(0.05);
-					}
-				});
-				this.audioPrevMusicTime = this.currentSong.currentTime;
-
-			}
-			else {
-				this.toneShiftOne = true;
-				console.log("Tone shift #2");
-			}
-		}
-
-		// 20 seconds
-		if (this.toneShiftOne && !this.toneShiftTwo && this.currentSong.currentTime >= 50) {
-
-
-
-			if (this.currentSong.currentTime >= 5555) {
-				this.toneShiftTwo = true;
-				this.encased      = true;
-
-
+					this.scene_.children.forEach(obj => {
+						if (obj.name === 'wall') {
+							obj.translateY(0.05);
+						}
+					});
+					this.audioPrevMusicTime = this.currentSong.currentTime;
+					return;
+				}
+				else {
+					this.toneShiftOne = true;
+					this.encased      = true;
+					// console.log("Tone shift #2");
+				}
 			}
 
-		}
+			// 20 seconds
+			if (this.toneShiftOne && !this.toneShiftTwo && this.currentSong.currentTime >= 50) {
 
-		if (this.toneShiftTwo && !this.toneShiftThree && this.currentSong.currentTime >= 50) {
-			console.log("Tone shift #3");
-			this.toneShiftThree = true;
+				this.manitou           = null;
+				this.aHorror.positionY = 7;
 
-			// for (var i = 0; i < 4; i++) {
-			// 	var selectedObject = this.scene_.getObjectByName('wall');
-			// 	this.scene_.remove(selectedObject);
-			// }
-		}
+				if (this.currentSong.currentTime >= 5555) {
+					this.toneShiftTwo = true;
+					this.encased      = true;
 
-		if (this.toneShiftThree && !this.toneShiftFour && this.currentSong.currentTime >= 135) {
-			console.log("Tone shift #4");
-			this.toneShiftFour = true;
-		}
 
-		if (this.toneShiftFour && !this.toneShiftFive && this.currentSong.currentTime >= 50) {
-			console.log("Tone shift #5");
-			this.toneShiftFive = true;
+				}
+
+			}
+
+			if (this.toneShiftTwo && !this.toneShiftThree && this.currentSong.currentTime >= 50) {
+				// console.log("Tone shift #3");
+				this.toneShiftThree = true;
+
+				// for (var i = 0; i < 4; i++) {
+				// 	var selectedObject = this.scene_.getObjectByName('wall');
+				// 	this.scene_.remove(selectedObject);
+				// }
+			}
+
+			if (this.toneShiftThree && !this.toneShiftFour && this.currentSong.currentTime >= 135) {
+				// console.log("Tone shift #4");
+				this.toneShiftFour = true;
+			}
+
+			if (this.toneShiftFour && !this.toneShiftFive && this.currentSong.currentTime >= 50) {
+				// console.log("Tone shift #5");
+				this.toneShiftFive = true;
+			}
+			// this.currentSong.currentTime >= 135
+
 		}
-		// this.currentSong.currentTime >= 135
 
 	}
 
@@ -426,27 +389,26 @@ class Sequence {
 	loadHorror_() {
 		const gltfLoader = new GLTFLoader();
 
-		gltfLoader.load(
+		this.aHorror = gltfLoader.load(
 			'./resources/entities/demon/scene.gltf',
 			(gltf) => {
 				const root         = gltf.scene;
 				root.lightingColor = '#9B7441';
 				root.position.set(10, -20, 0);
 				this.scene_.add(root);
-				this.aHorror = root;
 			},
 			// called while loading is progressing
 			function (xhr) {
 
-				console.log((xhr.loaded / xhr.total * 100) + '% loaded');
+				// console.log((xhr.loaded / xhr.total * 100) + '% loaded');
 				this.loadedHorror = true;
-				console.log("Horror set...");
+				// console.log("Horror set...");
 
 			},
 			// called when loading has errors
 			function (error) {
 
-				console.log('An error happened');
+				// console.log('An error happened');
 
 			}
 		);
@@ -508,6 +470,13 @@ class Sequence {
 		texture.encoding                     = THREE.sRGBEncoding;
 		this.scene_.background               = texture;
 		this.scene_.background.lightingColor = '#9B7441';
+		// this.scene_.background.intensity
+		const light = new THREE.AmbientLight( 0x404040 ); // soft white light
+		this.scene_.add( light );
+		console.log("Ambient light loaded");
+		light.intensity = 5;
+		console.log(light.intensity);
+
 		const mapLoader                      = new THREE.TextureLoader();
 		const maxAnisotropy                  = this.threejs_.capabilities.getMaxAnisotropy();
 
@@ -531,7 +500,7 @@ class Sequence {
 		this.manitou = new THREE.Mesh(
 			new THREE.BoxGeometry(4, 4, 4),
 			this.loadMaterial_('vintage-tile1_', 0.2));
-		this.manitou.position.set(10, 10, 0);
+		this.manitou.position.set(10, 5, 0);
 		this.manitou.castShadow    = true;
 		this.manitou.receiveShadow = true;
 		this.scene_.add(this.manitou);
@@ -547,40 +516,40 @@ class Sequence {
 		}
 
 
-		const concreteMaterial = await Promise.all([this.loadMaterial_('concrete3-', 4)]);
+		const concreteMaterial = this.loadMaterial_('concrete3-', 4);
 
 		const wall1 = new THREE.Mesh(
-			new THREE.BoxGeometry(100, 200, 4),
+			new THREE.BoxGeometry(50, 100, 4),
 			concreteMaterial);
 		wall1.name  = 'wall';
-		wall1.position.set(0, -200, -20);
+		wall1.position.set(0, -85, -20);
 		wall1.castShadow    = true;
 		wall1.receiveShadow = true;
 		this.scene_.add(wall1);
 
 		const wall2 = new THREE.Mesh(
-			new THREE.BoxGeometry(100, 200, 4),
+			new THREE.BoxGeometry(50, 100, 4),
 			concreteMaterial);
 		wall2.name  = 'wall';
-		wall2.position.set(0, -200, 20);
+		wall2.position.set(0, -85, 20);
 		wall2.castShadow    = true;
 		wall2.receiveShadow = true;
 		this.scene_.add(wall2);
 
 		const wall3 = new THREE.Mesh(
-			new THREE.BoxGeometry(4, 200, 100),
+			new THREE.BoxGeometry(4, 100, 50),
 			concreteMaterial);
 		wall3.name  = 'wall';
-		wall3.position.set(20, -200, 0);
+		wall3.position.set(20, -85, 0);
 		wall3.castShadow    = true;
 		wall3.receiveShadow = true;
 		this.scene_.add(wall3);
 
 		const wall4 = new THREE.Mesh(
-			new THREE.BoxGeometry(4, 200, 100),
+			new THREE.BoxGeometry(4, 100, 50),
 			concreteMaterial);
 		wall4.name  = 'wall';
-		wall4.position.set(-20, -200, 0);
+		wall4.position.set(-20, -85, 0);
 		wall4.castShadow    = true;
 		wall4.receiveShadow = true;
 		this.scene_.add(wall4);
@@ -674,41 +643,44 @@ class Sequence {
 
 	async initializeAudio_() {
 		// load a sound and set it as the Audio object's buffer
-		await this.musicSwitch('resources/audio/Glass.mp3');
+		this.musicSwitch('resources/audio/Glass.mp3');
 
 		return this.loadedAudio = true;
 	}
 
 
 	playMusicAudio() {
-		return new Promise(response => {
-			if (this.currentSong.play()) {
-				if (this.currentSong.ended) {
-					response = true;
-				}
-				else {
 
-				}
-			}
-		});
+		if (this.isPlaying === true) {
+			// console.log("play called returned");
+			return;
+
+		}
+		// console.log("play called in");
+
+		// TODO:
+		this.isPlayable = false;
+		this.isPlaying  = true;
+		const promise   = this.currentSong.play();
+		if (promise !== undefined) {
+			promise.catch((e) => {
+				// console.log("Failure Playing");
+				this.isPlayable = true;
+				this.isPlaying  = false;
+				return;
+			})
+		}
 
 	}
 
 
-	async* musicSwitch(audioUrl) {
+
+
+	musicSwitch(audioUrl) {
 		this.currentSong        = new Audio(audioUrl);
 		this.currentSong.volume = 0.5;
 
-
-		yield;
-
-		await document.addEventListener('mousemove');
-		await this.playMusicAudio();
-
-
-
 	}
-
 
 
 
@@ -726,20 +698,26 @@ class Sequence {
 
 
 	raf_() {
+		// console.log(this.isPlaying, this.isPlayable);
+		if (this.isPlayable === true && this.isPlaying !== true) {
+			this.playMusicAudio();
+		}
 		requestAnimationFrame((t) => {
 			if (this.previousRAF_ === null) {
 				this.previousRAF_ = t;
 			}
 
-			this.loadingScreen().next();
+			// this.loadingScreen().next();
+
 
 			this.step_(t - this.previousRAF_);
-			this.updateSequence(performance.now() - this.startTime, this.audioMusicTime);
 			this.threejs_.autoClear = true;
 			this.threejs_.render(this.scene_, this.camera_);
 			this.threejs_.autoClear = false;
 			this.threejs_.render(this.uiScene_, this.uiCamera_);
 			this.previousRAF_ = t;
+			this.updateSequence(performance.now() - this.startTime, this.audioMusicTime);
+
 			this.raf_();
 		});
 	}
@@ -749,65 +727,12 @@ class Sequence {
 		// Step speed
 		const timeElapsedS = timeElapsed * 0.00050;
 		this.fpsCamera_.update(timeElapsedS);
-		// console.log(this.camera_.position);
+		// // console.log(this.camera_.position);
 
 	}
 
+
 }
-
-
-
-/*###################END OF SEQUENCE CLASS###################*/
-
-
-/*###################START OF WALLING FUNCTION###################*/
-/*function WallingSequence(material, sceneRef, objectsRef) {
- const wall1 = new THREE.Mesh(
- new THREE.BoxGeometry(100, 100, 4),
- material);
- wall1.position.set(0, -40, -50);
- wall1.castShadow    = true;
- wall1.receiveShadow = true;
- sceneRef.add(wall1);
-
- const wall2 = new THREE.Mesh(
- new THREE.BoxGeometry(100, 100, 4),
- material);
- wall2.position.set(0, -40, 50);
- wall2.castShadow    = true;
- wall2.receiveShadow = true;
- sceneRef.add(wall2);
-
- const wall3 = new THREE.Mesh(
- new THREE.BoxGeometry(4, 100, 100),
- material);
- wall3.position.set(50, -40, 0);
- wall3.castShadow    = true;
- wall3.receiveShadow = true;
- sceneRef.add(wall3);
-
- const wall4 = new THREE.Mesh(
- new THREE.BoxGeometry(4, 100, 100),
- material);
- wall4.position.set(-50, -40, 0);
- wall4.castShadow    = true;
- wall4.receiveShadow = true;
- sceneRef.add(wall4);
-
- const wall_meshes = [wall1, wall2, wall3, wall4];
-
- for (let i = 0; i < wall_meshes.length; ++i) {
- const b = new THREE.Box3();
- b.setFromObject(wall_meshes[i]);
- objectsRef.push(b);
- }
-
- return true;
- }*/
-
-
-
-/*###################END OF WALLING FUNCTION###################*/
 
 
 
