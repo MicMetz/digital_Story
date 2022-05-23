@@ -3,6 +3,7 @@ import {GLTFLoader} from 'GLTFLoader';
 
 
 
+
 const KEYS = {
 	'a': 65,
 	's': 83,
@@ -26,12 +27,12 @@ class InputController {
 
 	initialize_() {
 		this.current_      = {
-			leftButton : false,
+			leftButton:  false,
 			rightButton: false,
 			mouseXDelta: 0,
 			mouseYDelta: 0,
-			mouseX     : 0,
-			mouseY     : 0,
+			mouseX:      0,
+			mouseY:      0,
 		};
 		this.previous_     = null;
 		this.keys_         = {};
@@ -658,8 +659,8 @@ class Sequence {
 
 		return new THREE.MeshStandardMaterial({
 			metalnessMap: metalMap,
-			map         : albedo,
-			normalMap   : normalMap,
+			map:          albedo,
+			normalMap:    normalMap,
 			roughnessMap: roughnessMap,
 		});
 
@@ -671,12 +672,11 @@ class Sequence {
 	}
 
 
-	initializeAudio_() {
-
-
+	async initializeAudio_() {
 		// load a sound and set it as the Audio object's buffer
-		this.audioSwitch('resources/audio/Glass.mp3', 1);
+		await this.musicSwitch('resources/audio/Glass.mp3');
 
+		return this.loadedAudio = true;
 	}
 
 
@@ -695,12 +695,15 @@ class Sequence {
 	}
 
 
-	audioSwitch(audioUrl, audioType) {
-		if (audioType) {
-			this.currentSong        = new Audio(audioUrl);
-			this.currentSong.volume = 0.5;
+	async* musicSwitch(audioUrl) {
+		this.currentSong        = new Audio(audioUrl);
+		this.currentSong.volume = 0.5;
 
-			this.playMusicAudio();
+
+		yield;
+
+		await document.addEventListener('mousemove');
+		await this.playMusicAudio();
 
 
 
