@@ -5,22 +5,41 @@
 		<meta name = "viewport" content = "width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
 		<link rel = "stylesheet" type = "text/css" href = "base.css">
 
-		<script type="importmap">
+		<script async type = "importmap">
         {
           "imports": {
             "three": "https://unpkg.com/three@0.138.0/build/three.module.js",
             "OrbitControls": "https://unpkg.com/three@0.138.0/examples/jsm/controls/OrbitControls.js",
             "GLTFLoader": "https://unpkg.com/three@0.138.0/examples/jsm/loaders/GLTFLoader.js",
             "Water": "https://unpkg.com/three@0.138.0/examples/jsm/objects/Water.js",
-            "Sky": "https://unpkg.com/three@0.138.0/examples/jsm/objects/Sky.js"
+            "Sky": "https://unpkg.com/three@0.138.0/examples/jsm/objects/Sky.js",
+            "PointerLockControls": "https://unpkg.com/three@0.138.0/examples/jsm/controls/PointerLockControls",
+            "OrbitControls": "https://unpkg.com/three@0.138.0/examples/jsm/controls/OrbitControls",
+            "TWEEN": "https://unpkg.com/three@0.138.0/examples/jsm/libs/tween.module.min.js"
+
           }
         }
-        </script>
+
+		</script>
+		<script src="https://cdnjs.cloudflare.com/ajax/libs/tween.js/16.3.5/Tween.min.js"></script>
+		<script src = "main.js" type = "module"></script>
+
 	</head>
 
 	<body>
-<!--		<script src = "scenes/OceanScene.js" type = "module"></script>-->
-		<script src = "main.js" type = "module"></script>
-<!--		<div id="canvas" ></div>-->
+		<div id = "blocker">
+			<div id = "pause-menu">
+				<p style = "font-size:36px">
+					Click to start
+				</p>
+				<p>
+					Move: WASD<br/>
+					ESC:  PAUSE<br/>
+					Look: MOUSE
+				</p>
+			</div>
+		</div>
+
+		<div id = "canvas"></div>
 	</body>
 </html>

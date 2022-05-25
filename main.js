@@ -1,312 +1,214 @@
-import * as THREE   from 'three';
-import {GLTFLoader} from 'GLTFLoader';
+import * as THREE            from 'three';
+import {GLTFLoader}          from 'GLTFLoader';
+import {PointerLockControls} from "PointerLockControls";
+import {OrbitControls}       from "OrbitControls";
+import {TWEEN}               from "TWEEN";
 
 
 
 
-const KEYS = {
-	'a': 65,
-	's': 83,
-	'w': 87,
-	'd': 68,
-};
+const objects = [];
+
+let raycaster;
+
+let moveForward  = false;
+let moveBackward = false;
+let moveLeft     = false;
+let moveRight    = false;
+let canJump      = false;
+
+var prevTime    = performance.now();
+const velocity  = new THREE.Vector3();
+const direction = new THREE.Vector3();
+const vertex    = new THREE.Vector3();
+const color     = new THREE.Color();
 
 
-function clamp(x, a, b) {
-	return Math.min(Math.max(x, a), b);
-}
+
+// mouseAudio = new MouseAudio(document.getElementById('canvas'), document.getElementById('audio'));
+
+
+var activeScene        = null;
+var camera             = null;
+var userinterfaceScene = null;
+var userinterfaceCamera;
+var firstPersonCamera;
+var music              = new Audio();
+var voiceOver          = new Audio();
+var controls;
+const sceneList        = [0, 1, 2, 3];
+var blocker            = document.getElementById('blocker');
+var pausemenu          = document.getElementById('pause-menu');
 
 
 
-class InputController {
-	constructor(target) {
-		this.target_ = target || document;
-		this.initialize_();
-	}
+function HellScene(canvas) {
+	const renderer = buildRenderer(canvas);
+	const scene    = buildScene();
+	const camera   = buildCamera();
+	// const firstPersonCamera         = buildPerson();
+	// const sun        = buildSun();
+	// const water      = buildWater();
+	const orbitCon = setOrbitControls();
+	var manitou    = loadManitou();
+	const Horror   = loadHorror_();
+
+	// currentSong     = new Audio();
+	var currentSong  = null;
+	var isPlaying    = false;
+	var isPlayable   = true;
+	var currentVoice = new Audio();
+	var previousRAF_ = null;
+
+	var loadedRender = false;
+	var loadedLights = false;
+	var loadedHell   = false;
+	var loadedPost   = false;
+	var loadedUser   = false;
+	var loadedAudio  = false;
+	var loadedHorror = false;
+	var isReady      = false;
+
+	var toneShiftOne   = false;
+	var toneShiftTwo   = false;
+	var toneShiftThree = false;
+	var toneShiftFour  = false;
+	var toneShiftFive  = false;
+	var encased        = false;
+
+	initializeAudio_();
+	controls = new PointerLockControls(camera, document.body);
+	// controls = new PointerLockControls(camera, renderer.domElement);
+
+	pausemenu.addEventListener('click', function () {
+		controls.lock();
+	});
 
 
-	initialize_() {
-		this.current_      = {
-			leftButton:  false,
-			rightButton: false,
-			mouseXDelta: 0,
-			mouseYDelta: 0,
-			mouseX:      0,
-			mouseY:      0,
-		};
-		this.previous_     = null;
-		this.keys_         = {};
-		this.previousKeys_ = {};
-		this.target_.addEventListener('mousedown', (e) => this.onMouseDown_(e), false);
-		this.target_.addEventListener('mousemove', (e) => this.onMouseMove_(e), false);
-		this.target_.addEventListener('mouseup', (e) => this.onMouseUp_(e), false);
-		this.target_.addEventListener('keydown', (e) => this.onKeyDown_(e), false);
-		this.target_.addEventListener('keyup', (e) => this.onKeyUp_(e), false);
-	}
-
-
-	onMouseMove_(e) {
-		this.current_.mouseX = e.pageX - window.innerWidth / 90;
-		this.current_.mouseY = e.pageY - window.innerHeight / 90;
-
-		if (this.previous_ === null) {
-			this.previous_ = {...this.current_};
+	controls.addEventListener('lock', function () {
+		pausemenu.style.display = '';
+		blocker.style.display   = 'none';
+		if (currentSong.isPaused) {
+			currentSong.resume();
 		}
+	});
 
-		this.current_.mouseXDelta = this.current_.mouseX - this.previous_.mouseX;
-		this.current_.mouseYDelta = this.current_.mouseY - this.previous_.mouseY;
-	}
-
-
-	onMouseDown_(e) {
-		this.onMouseMove_(e);
-
-		switch (e.button) {
-			case 0: {
-				this.current_.leftButton = true;
-				break;
-			}
-			case 2: {
-				this.current_.rightButton = true;
-				break;
-			}
+	controls.addEventListener('unlock', function () {
+		blocker.style.display   = 'block';
+		pausemenu.style.display = 'block';
+		if (currentSong.isPlaying) {
+			currentSong.pause();
 		}
-	}
+	});
+	scene.add(controls.getObject());
 
+	const onKeyDown = function (event) {
+		switch (event.code) {
 
-	onMouseUp_(e) {
-		this.onMouseMove_(e);
-
-		switch (e.button) {
-			case 0: {
-				this.current_.leftButton = false;
+			case 'ArrowUp':
+			case 'KeyW':
+				moveForward = true;
 				break;
-			}
-			case 2: {
-				this.current_.rightButton = false;
+
+			case 'ArrowLeft':
+			case 'KeyA':
+				moveLeft = true;
 				break;
-			}
-		}
-	}
 
+			case 'ArrowDown':
+			case 'KeyS':
+				moveBackward = true;
+				break;
 
-	onKeyDown_(e) {
-		this.keys_[e.keyCode] = true;
-	}
+			case 'ArrowRight':
+			case 'KeyD':
+				moveRight = true;
+				break;
 
-
-	onKeyUp_(e) {
-		this.keys_[e.keyCode] = false;
-	}
-
-
-	key(keyCode) {
-		return !!this.keys_[keyCode];
-	}
-
-
-	isReady() {
-		return this.previous_ !== null;
-	}
-
-
-	update(_) {
-		if (this.previous_ !== null) {
-			this.current_.mouseXDelta = this.current_.mouseX - this.previous_.mouseX;
-			this.current_.mouseYDelta = this.current_.mouseY - this.previous_.mouseY;
-
-			this.previous_ = {...this.current_};
-		}
-	}
-};
-
-
-
-class FirstPersonCamera {
-	constructor(camera, objects) {
-		this.camera_      = camera;
-		this.input_       = new InputController();
-		this.rotation_    = new THREE.Quaternion();
-		this.translation_ = new THREE.Vector3(0, 2, 0);
-		this.phi_         = 0;
-		this.phiSpeed_    = 8;
-		this.theta_       = 0;
-		this.thetaSpeed_  = 5;
-		this.objects_     = objects;
-	}
-
-
-	update(timeElapsedS) {
-		this.updateRotation_(timeElapsedS);
-		this.updateCamera_(timeElapsedS);
-		this.updateTranslation_(timeElapsedS);
-		this.input_.update(timeElapsedS);
-	}
-
-
-	updateCamera_(_) {
-		this.camera_.quaternion.copy(this.rotation_);
-		this.camera_.position.copy(this.translation_);
-		// this.camera_.position.y += Math.sin(this.headBobTimer_ * 10) * 1.5;
-
-		const forward = new THREE.Vector3(0, 0, -1);
-		forward.applyQuaternion(this.rotation_);
-
-		const dir = forward.clone();
-
-		forward.multiplyScalar(100);
-		forward.add(this.translation_);
-
-		let closest  = forward;
-		const result = new THREE.Vector3();
-		const ray    = new THREE.Ray(this.translation_, dir);
-		for (let i = 0; i < this.objects_.length; ++i) {
-			if (ray.intersectBox(this.objects_[i], result)) {
-				if (result.distanceTo(ray.origin) < closest.distanceTo(ray.origin)) {
-					closest = result.clone();
+			case 'Space':
+				if (canJump === true) {
+					velocity.y += 350;
 				}
-			}
+				canJump = false;
+				break;
+
 		}
 
-		this.camera_.lookAt(closest);
-	}
+	};
 
+	const onKeyUp = function (event) {
 
-	updateTranslation_(timeElapsedS) {
-		const forwardVelocity = (this.input_.key(KEYS.w) ? 1 : 0) + (this.input_.key(KEYS.s) ? -1 : 0)
-		const strafeVelocity  = (this.input_.key(KEYS.a) ? 1 : 0) + (this.input_.key(KEYS.d) ? -1 : 0)
+		switch (event.code) {
 
-		const qx = new THREE.Quaternion();
-		qx.setFromAxisAngle(new THREE.Vector3(0, 1, 0), this.phi_);
+			case 'ArrowUp':
+			case 'KeyW':
+				moveForward = false;
+				break;
 
-		const forward = new THREE.Vector3(0, 0, -1);
-		forward.applyQuaternion(qx);
-		forward.multiplyScalar(forwardVelocity * timeElapsedS * 10);
+			case 'ArrowLeft':
+			case 'KeyA':
+				moveLeft = false;
+				break;
 
-		const left = new THREE.Vector3(-1, 0, 0);
-		left.applyQuaternion(qx);
-		left.multiplyScalar(strafeVelocity * timeElapsedS * 10);
+			case 'ArrowDown':
+			case 'KeyS':
+				moveBackward = false;
+				break;
 
-		this.translation_.add(forward);
-		this.translation_.add(left);
+			case 'ArrowRight':
+			case 'KeyD':
+				moveRight = false;
+				break;
 
-		if (forwardVelocity !== 0 || strafeVelocity !== 0) {
-			// this.headBobActive_ = true;
 		}
+
+	};
+
+	document.addEventListener('keydown', onKeyDown);
+	document.addEventListener('keyup', onKeyUp);
+	raycaster = new THREE.Raycaster(new THREE.Vector3(), new THREE.Vector3(0, -1, 0), 0, 10);
+	document.body.appendChild(renderer.domElement);
+
+
+	// animate();
+
+
+	function setOrbitControls() {
+		const controls         = new OrbitControls(camera, renderer.domElement);
+		controls.maxPolarAngle = Math.PI * 0.495;
+		controls.target.set(0, 2, 0);
+		controls.minDistance = 1.0;
+		controls.maxDistance = 2.0;
+		controls.update();
+		return controls;
 	}
 
 
-	updateRotation_(timeElapsedS) {
-		const xh = this.input_.current_.mouseXDelta / window.innerWidth;
-		const yh = this.input_.current_.mouseYDelta / window.innerHeight;
-
-		this.phi_ += -xh * this.phiSpeed_;
-		this.theta_ = clamp(this.theta_ + -yh * this.thetaSpeed_, -Math.PI / 3, Math.PI / 3);
-
-		const qx = new THREE.Quaternion();
-		qx.setFromAxisAngle(new THREE.Vector3(0, 1, 0), this.phi_);
-		const qz = new THREE.Quaternion();
-		qz.setFromAxisAngle(new THREE.Vector3(1, 0, 0), this.theta_);
-
-		const q = new THREE.Quaternion();
-		q.multiply(qx);
-		q.multiply(qz);
-
-		this.rotation_.copy(q);
-	}
-}
-
-
-
-
-// this.mouseAudio = new MouseAudio(document.getElementById('canvas'), document.getElementById('audio'));
-
-
-class Sequence {
-	constructor() {
-		this.audioLoader_       = new THREE.AudioLoader();
-		this.audioListener      = new THREE.AudioListener();
-		this.audioMusicTime     = 0;
-		this.audioVoiceTime     = 0;
-		this.audioPrevMusicTime = 0;
-
-		// this.currentSong     = new Audio();
-		this.currentSong  = null;
-		this.isPlaying    = false;
-		this.isPlayable   = true;
-		this.currentVoice = new Audio();
-		/*this.audioMusicTrack = '';                          /!*TODO: WIP*!/
-		 this.audioVoiceTrack = '';                          /!*TODO: WIP*!/*/
-		/* this.loader = new TwoStepAudioLoader()           /*TODO: WIP*/
-		this.previousRAF_ = null;
-
-		this.loadedRender = false;
-		this.loadedLights = false;
-		this.loadedHell   = false;
-		this.loadedPost   = false;
-		this.loadedUser   = false;
-		this.loadedAudio  = false;
-		this.loadedHorror = false;
-		this.isReady      = false;
-
-		this.loaderList_ = [
-			this.loadedRender,
-			this.loadedLights,
-			this.loadedHell,
-			this.loadedPost,
-			this.loadedUser,
-			this.loadedAudio,
-			this.loadedHorror
-		];
-
-		this.toneShiftOne   = false;
-		this.toneShiftTwo   = false;
-		this.toneShiftThree = false;
-		this.toneShiftFour  = false;
-		this.toneShiftFive  = false;
-		this.encased        = false;
-
-		this.manitou = null;
-		this.aHorror = null;
-
-		// this.loadingScreen();
-		this.initialize_();
-
+	function loadManitou() {
+		const man = new THREE.Mesh(
+			new THREE.BoxGeometry(10, 10, 10),
+			loadMaterial_('vintage-tile1_', 0.2));
+		man.position.set(10, 5, 0);
+		man.castShadow    = true;
+		man.receiveShadow = true;
+		scene.add(man);
+		return man;
 	}
 
 
-	async initialize_() {
-		await this.initializeRenderer_();
-		await this.initializeLights_();
-		await this.initializeHellScene_();
-		await this.initializePostFX_();
-		await this.initializeUser_();
-		await this.initializeAudio_();
-
-		this.onWindowResize_();
-		this.setReady(true);
-		// this.loadingScreen().next();
-
-		// console.log("Ready!")
-
-		this.raf_();
-
+	function setReady(b) {
+		isReady = b;
 	}
 
 
-	setReady(b) {
-		this.isReady = b;
-	}
-
-
-	checkReady() {
-		return this.isReady;
+	function checkReady() {
+		return isReady;
 	}
 
 
 	//
 	// * loadingScreen() {
-	// 	while (!this.checkReady()) {
+	// 	while (!checkReady()) {
 	// 		document.body.classList.add('load-cover');
 	// 		document.addEventListener("any", function (event) {
 	// 			event.preventDefault();
@@ -321,145 +223,151 @@ class Sequence {
 	// }
 
 
-	updateSequence(timeElapsed) {
-		// console.log(this.currentSong.currentTime);
+	function updateSequence(timeElapsed) {
+		// console.log(currentSong.currentTime);
 
-		if (this.isPlaying) {
-			if (!this.toneShiftOne && !this.encased) {
-				console.log("Initiated walling...");
+		if (isPlaying) {
+			if (!toneShiftOne && !encased) {
+				// console.log("Initiated walling...");
 
-				if (this.currentSong.currentTime <= 45) {
-					console.log("Tone shift #1");
+				if (currentSong.currentTime <= 45) {
 
-					this.scene_.children.forEach(obj => {
+					// console.log("Tone shift #1");
+					scene.children.forEach(obj => {
 						if (obj.name === 'wall') {
 							obj.translateY(0.05);
 						}
 					});
-					this.audioPrevMusicTime = this.currentSong.currentTime;
+					// prevTime = currentSong.currentTime;
 					return;
 				}
 				else {
-					this.toneShiftOne = true;
-					this.encased      = true;
+					toneShiftOne = true;
+					encased      = true;
+
 				}
 			}
 
 			// 20 seconds
-			if (this.toneShiftOne && !this.toneShiftTwo && this.currentSong.currentTime >= 50) {
+			if (toneShiftOne && !toneShiftTwo && currentSong.currentTime >= 50) {
 				console.log("Tone shift #2");
 
-				this.manitou           = null;
-				// this.aHorror.positionY = 7;
-				this.aHorror.position.set(this.aHorror.positionX, 8, this.aHorror.positionZ);
+				// manitou.position.set(manitou.positionX, -8, manitou.positionZ);
+				//
+				// aHorror.position.set(aHorror.positionX, 8, aHorror.positionZ);
 
-				if (this.currentSong.currentTime >= 5555) {
-					this.toneShiftTwo = true;
-					this.encased      = true;
+				// horrorTrack();
+
+				if (currentSong.currentTime >= 5555) {
+					toneShiftTwo = true;
+					encased      = true;
 
 
 				}
 
 			}
 
-			if (this.toneShiftTwo && !this.toneShiftThree && this.currentSong.currentTime >= 50) {
+			if (toneShiftTwo && !toneShiftThree && currentSong.currentTime >= 50) {
 				console.log("Tone shift #3");
-				this.toneShiftThree = true;
+				toneShiftThree = true;
 
 				// for (var i = 0; i < 4; i++) {
-				// 	var selectedObject = this.scene_.getObjectByName('wall');
-				// 	this.scene_.remove(selectedObject);
+				// 	var selectedObject = scene1.getObjectByName('wall');
+				// 	scene1.remove(selectedObject);
 				// }
 			}
 
-			if (this.toneShiftThree && !this.toneShiftFour && this.currentSong.currentTime >= 135) {
+			if (toneShiftThree && !toneShiftFour && currentSong.currentTime >= 135) {
 				console.log("Tone shift #4");
-				this.toneShiftFour = true;
+				toneShiftFour = true;
 			}
 
-			if (this.toneShiftFour && !this.toneShiftFive && this.currentSong.currentTime >= 50) {
+			if (toneShiftFour && !toneShiftFive && currentSong.currentTime >= 50) {
 				// console.log("Tone shift #5");
-				this.toneShiftFive = true;
+				toneShiftFive = true;
 			}
-			// this.currentSong.currentTime >= 135
+			// currentSong.currentTime >= 135
 
 		}
 
 	}
 
 
-	async loadHorror_() {
+	async function loadHorror_() {
 		const gltfLoader = new GLTFLoader();
-
-		this.aHorror = await Promise.all([gltfLoader.load(
-			'./resources/entities/demon/scene.gltf',
-			(gltf) => {
-				const root         = gltf.scene;
-				root.lightingColor = '#9B7441';
+		let hurl         = './resources/entities/demon/scene.gltf'.toString();
+		const horror     = await Promise.all([gltfLoader.load(hurl, function (gltf) {
+				const root = gltf.scene;
+				// root.lightingColor = '#9B7441';
 				// root.position.set(10, -20, 0);
-				root.position.set(10, 8, 0);
-				this.scene_.add(root);
+				root.position.set(10, 10, 0);
+				// Horror = root;
+				scene.add(root);
 			},
-			// called while loading is progressing
 			function (xhr) {
 
-				// console.log((xhr.loaded / xhr.total * 100) + '% loaded');
-				this.loadedHorror = true;
-				console.log("Horror set...");
+				console.log((xhr.loaded / xhr.total * 100) + '% loaded');
+				// this.loadedHorror = true;
 
 			},
 			// called when loading has errors
 			function (error) {
-
 				console.log('An error happened');
+			})]);
+		console.log("Horror set...");
 
-			}
-		)]);
+		return horror.scene;
 	}
 
 
-	async initializeUser_() {
-		this.fpsCamera_ = new FirstPersonCamera(this.camera_, this.objects_);
-		return this.loadedUser = true;
+	function horrorTrack() {
+		console.log('start');
+		new TWEEN.Tween(Horror.position)
+			.to(camera.position, 700) // destination, duration
+			.start() // start now
 	}
 
 
-	async initializeRenderer_() {
-		this.threejs_                   = new THREE.WebGLRenderer({
+	// function buildPerson() {
+	// 	firstPersonCamera = new FirstPersonCamera(camera, objects);
+	// 	// return loadedUser = true;
+	// }
+
+
+	function buildRenderer(canvas) {
+		const rend             = new THREE.WebGLRenderer({
 			antialias: false,
 		});
-		this.threejs_.shadowMap.enabled = true;
-		this.threejs_.shadowMap.type    = THREE.PCFSoftShadowMap;
-		this.threejs_.setPixelRatio(window.devicePixelRatio);
-		this.threejs_.setSize(window.innerWidth, window.innerHeight);
-		this.threejs_.physicallyCorrectLights = true;
-		this.threejs_.outputEncoding          = THREE.sRGBEncoding;
-		this.threejs_.gammaFactor             = 1.2;
-		this.threejs_.gammaOutput             = 2.2;
-		document.body.appendChild(this.threejs_.domElement);
+		rend.shadowMap.enabled = true;
+		rend.shadowMap.type    = THREE.PCFSoftShadowMap;
+		rend.setPixelRatio(window.devicePixelRatio);
+		rend.setSize(window.innerWidth, window.innerHeight);
+		rend.physicallyCorrectLights = true;
+		rend.outputEncoding          = THREE.sRGBEncoding;
+		rend.gammaFactor             = 1.2;
+		rend.gammaOutput             = 2.2;
+		canvas.appendChild(rend.domElement);
+		return rend;
 
-		window.addEventListener('resize', () => {
-			this.onWindowResize_();
-		}, false);
-
-		const fov    = 60;
-		const aspect = 1920 / 1080;
-		const near   = 1.0;
-		const far    = 500.0;
-		this.camera_ = new THREE.PerspectiveCamera(fov, aspect, near, far);
-		this.camera_.position.set(0, 2, 0);
-
-		this.scene_ = new THREE.Scene();
-
-		this.uiCamera_ = new THREE.OrthographicCamera(
-			-1, 1, 1 * aspect, -1 * aspect, 1, 1000);
-		this.uiScene_  = new THREE.Scene();
-
-		return this.loadedRender = true;
 	}
 
 
-	async initializeHellScene_() {
+	function buildCamera() {
+		const fov     = 60;
+		const aspect  = 1920 / 1080;
+		const near    = 1.0;
+		const far     = 500.0;
+		const aCamera = new THREE.PerspectiveCamera(fov, aspect, near, far);
+		aCamera.position.set(0, 2, 0);
+
+		userinterfaceCamera = new THREE.OrthographicCamera(-1, 1, 1 * aspect, -1 * aspect, 1, 1000);
+		userinterfaceScene  = new THREE.Scene();
+		return aCamera;
+	}
+
+
+	function buildScene() {
+		const aScene  = new THREE.Scene();
 		const loader  = new THREE.CubeTextureLoader();
 		const texture = loader.load([
 			'./resources/skybox/sunsetflat_ft.jpg',
@@ -470,18 +378,16 @@ class Sequence {
 			'./resources/skybox/sunsetflat_lf.jpg',
 		]);
 
-		texture.encoding                     = THREE.sRGBEncoding;
-		this.scene_.background               = texture;
-		this.scene_.background.lightingColor = '#9B7441';
-		// this.scene_.background.intensity
-		const light                          = new THREE.AmbientLight(0x404040); // soft white light
-		this.scene_.add(light);
-		console.log("Ambient light loaded");
-		light.intensity = 5;
-		console.log(light.intensity);
+		texture.encoding                = THREE.sRGBEncoding;
+		aScene.background               = texture;
+		aScene.background.lightingColor = '#9B7441';
+		// aScene1.background.intensity
+		const light                     = new THREE.AmbientLight(0x404040); // soft white light
+		light.intensity                 = 10;
+		aScene.add(light);
 
 		const mapLoader     = new THREE.TextureLoader();
-		const maxAnisotropy = this.threejs_.capabilities.getMaxAnisotropy();
+		const maxAnisotropy = renderer.capabilities.getMaxAnisotropy();
 
 		const trak_base      = mapLoader.load('resources/tileKit/trak_base.jpg');
 		trak_base.anisotropy = maxAnisotropy;
@@ -496,30 +402,12 @@ class Sequence {
 		plane.castShadow    = false;
 		plane.receiveShadow = true;
 		plane.rotation.x    = -Math.PI / 2;
-		this.scene_.add(plane);
-
-		//#################################### this.manitou ####################################\\
-
-		this.manitou = new THREE.Mesh(
-			new THREE.BoxGeometry(4, 4, 4),
-			this.loadMaterial_('vintage-tile1_', 0.2));
-		this.manitou.position.set(10, 5, 0);
-		this.manitou.castShadow    = true;
-		this.manitou.receiveShadow = true;
-		this.scene_.add(this.manitou);
-
-		const meshes = [plane, this.manitou];
-
-		this.objects_ = [];
-
-		for (let i = this.camera_.position; i < meshes.length; ++i) {
-			const b = new THREE.Box3();
-			b.setFromObject(meshes[i]);
-			this.objects_.push(b);
-		}
+		aScene.add(plane);
 
 
-		const concreteMaterial = this.loadMaterial_('concrete3-', 4);
+
+
+		const concreteMaterial = loadMaterial_('concrete3-', 4);
 
 		const wall1 = new THREE.Mesh(
 			new THREE.BoxGeometry(50, 100, 4),
@@ -528,7 +416,7 @@ class Sequence {
 		wall1.position.set(0, -85, -20);
 		wall1.castShadow    = true;
 		wall1.receiveShadow = true;
-		this.scene_.add(wall1);
+		aScene.add(wall1);
 
 		const wall2 = new THREE.Mesh(
 			new THREE.BoxGeometry(50, 100, 4),
@@ -537,7 +425,7 @@ class Sequence {
 		wall2.position.set(0, -85, 20);
 		wall2.castShadow    = true;
 		wall2.receiveShadow = true;
-		this.scene_.add(wall2);
+		aScene.add(wall2);
 
 		const wall3 = new THREE.Mesh(
 			new THREE.BoxGeometry(4, 100, 50),
@@ -546,7 +434,7 @@ class Sequence {
 		wall3.position.set(20, -85, 0);
 		wall3.castShadow    = true;
 		wall3.receiveShadow = true;
-		this.scene_.add(wall3);
+		aScene.add(wall3);
 
 		const wall4 = new THREE.Mesh(
 			new THREE.BoxGeometry(4, 100, 50),
@@ -555,23 +443,27 @@ class Sequence {
 		wall4.position.set(-20, -85, 0);
 		wall4.castShadow    = true;
 		wall4.receiveShadow = true;
-		this.scene_.add(wall4);
+		aScene.add(wall4);
 
-		const wall_meshes = [wall1, wall2, wall3, wall4];
 
-		for (let i = 0; i < wall_meshes.length; ++i) {
-			const b = new THREE.Box3().setFromObject(wall_meshes[i]);
-			b.name  = 'objWall';
-			this.objects_.push(b);
+		const meshes  = [plane, wall1, wall2, wall3, wall4];
+		const objects = [];
+		for (let i = 0; i < meshes.length; ++i) {
+			const b = new THREE.Box3().setFromObject(meshes[i]);
+			objects.push(b);
 		}
 
-		await  this.loadHorror_();
-		return this.loadedHorror = true;
+		// for (let i = camera.position; i < meshes.length; ++i) {
+		// 	const b = new THREE.Box3();
+		// 	b.setFromObject(meshes[i]);
+		// 	objects.push(b);
+		// }
 
+		return aScene
 	}
 
 
-	initializeLights_() {
+	function initializeLights_() {
 		const distance = 50.0;
 		const angle    = Math.PI / 4.0;
 		const penumbra = 0.5;
@@ -588,7 +480,7 @@ class Sequence {
 
 		light.position.set(25, 25, 0);
 		light.lookAt(0, 0, 0);
-		this.scene_.add(light);
+		scene.add(light);
 
 		const upColour   = 0xFFFF80;
 		const downColour = 0x808080;
@@ -596,13 +488,13 @@ class Sequence {
 		light.color.setHSL(0.6, 1, 0.6);
 		light.groundColor.setHSL(0.095, 1, 0.75);
 		light.position.set(0, 4, 0);
-		this.scene_.add(light);
+		scene.add(light);
 	}
 
 
-	loadMaterial_(name, tiling) {
+	function loadMaterial_(name, tiling) {
 		const mapLoader     = new THREE.TextureLoader();
-		const maxAnisotropy = this.threejs_.capabilities.getMaxAnisotropy();
+		const maxAnisotropy = renderer.capabilities.getMaxAnisotropy();
 
 		const metalMap      = mapLoader.load('resources/tileKit/' + name + 'metallic.png');
 		metalMap.anisotropy = maxAnisotropy;
@@ -639,37 +531,33 @@ class Sequence {
 	}
 
 
-	async initializePostFX_() {
-		return this.loadedPost = true;
-	}
 
 
-	async initializeAudio_() {
+	function initializeAudio_() {
 		// load a sound and set it as the Audio object's buffer
-		this.musicSwitch('resources/audio/Glass.mp3');
+		musicSwitch('resources/audio/Glass.mp3');
 
-		return this.loadedAudio = true;
 	}
 
 
-	playMusicAudio() {
+	function playMusicAudio() {
 
-		if (this.isPlaying === true) {
+		if (isPlaying === true) {
 			// console.log("play called returned");
 			return;
 
 		}
 		// console.log("play called in");
-
-		// TODO:
-		this.isPlayable = false;
-		this.isPlaying  = true;
-		const promise   = this.currentSong.play();
+		var
+			// TODO:
+			isPlayable = false;
+		isPlaying      = true;
+		const promise  = currentSong.play();
 		if (promise !== undefined) {
 			promise.catch((e) => {
 				// console.log("Failure Playing");
-				this.isPlayable = true;
-				this.isPlaying  = false;
+				isPlayable = true;
+				isPlaying  = false;
 				return;
 			})
 		}
@@ -679,69 +567,103 @@ class Sequence {
 
 
 
-	musicSwitch(audioUrl) {
-		this.currentSong        = new Audio(audioUrl);
-		this.currentSong.volume = 0.5;
+	function musicSwitch(audioUrl) {
+		currentSong        = new Audio(audioUrl);
+		currentSong.volume = 0.5;
 
 	}
 
 
 
 
-	onWindowResize_() {
-		this.camera_.aspect = window.innerWidth / window.innerHeight;
-		this.camera_.updateProjectionMatrix();
-
-		this.uiCamera_.left  = -this.camera_.aspect;
-		this.uiCamera_.right = this.camera_.aspect;
-		this.uiCamera_.updateProjectionMatrix();
-
-		this.threejs_.setSize(window.innerWidth, window.innerHeight);
+	function onWindowResize() {
+		camera.aspect = window.innerWidth / window.innerHeight;
+		camera.updateProjectionMatrix();
+		renderer.setSize(window.innerWidth, window.innerHeight);
 	}
 
 
-	raf_() {
-		// console.log(this.isPlaying, this.isPlayable);
-		if (this.isPlayable === true && this.isPlaying !== true) {
-			this.playMusicAudio();
-		}
-		requestAnimationFrame((t) => {
-			if (this.previousRAF_ === null) {
-				this.previousRAF_ = t;
+	window.addEventListener('resize', onWindowResize);
+
+
+
+	this.update = function (time) {
+		if (controls.isLocked === true) {
+			// console.log(camera.)
+			if (isPlayable === true && isPlaying !== true) {
+				playMusicAudio();
+			}
+			const delta = (time - prevTime) / 1000;
+			updateSequence(delta)
+
+			velocity.x -= velocity.x * 10.0 * delta;
+			velocity.z -= velocity.z * 10.0 * delta;
+
+			velocity.y -= 9.8 * 100.0 * delta; // 100.0 = mass
+
+			direction.z = Number(moveForward) - Number(moveBackward);
+			direction.x = Number(moveRight) - Number(moveLeft);
+			direction.normalize(); // this ensures consistent movements in all directions
+
+			if (moveForward || moveBackward) {
+				velocity.z -= direction.z * 400.0 * delta;
+			}
+			if (moveLeft || moveRight) {
+				velocity.x -= direction.x * 400.0 * delta;
 			}
 
-			// this.loadingScreen().next();
+			controls.moveRight(-velocity.x * delta);
+			controls.moveForward(-velocity.z * delta);
+
+			controls.getObject().position.y += (velocity.y * delta); // new behavior
+
+			if (controls.getObject().position.y < 10) {
+
+				velocity.y                      = 0;
+				controls.getObject().position.y = 10;
+
+				canJump = true;
+
+			}
+		}
 
 
-			this.step_(t - this.previousRAF_);
-			this.threejs_.autoClear = true;
-			this.threejs_.render(this.scene_, this.camera_);
-			this.threejs_.autoClear = false;
-			this.threejs_.render(this.uiScene_, this.uiCamera_);
-			this.previousRAF_ = t;
-			this.updateSequence(performance.now() - this.startTime, this.audioMusicTime);
+		prevTime = time;
 
-			this.raf_();
-		});
+		renderer.render(scene, camera);
 	}
-
-
-	step_(timeElapsed) {
-		// Step speed
-		const timeElapsedS = timeElapsed * 0.00050;
-		this.fpsCamera_.update(timeElapsedS);
-		// // console.log(this.camera_.position);
-
-	}
-
-
 }
 
 
 
 
-let _APP = null;
+// function step_(timeElapsed) {
+// 	// Step speed
+// 	const timeElapsedS = timeElapsed * 0.00050;
+// 	firstPersonCamera.update(timeElapsedS);
+// 	// // console.log(camera.position);
+//
+// }
 
-window.addEventListener('DOMContentLoaded', () => {
-	_APP = new Sequence();
-});
+
+
+const canvas    = document.getElementById("canvas");
+const hellscene = new HellScene(canvas);
+
+
+
+function animate() {
+	requestAnimationFrame(animate);
+	const time = performance.now();
+
+	hellscene.update(time);
+
+}
+
+
+animate();
+
+//
+// window.addEventListener('DOMContentLoaded', () => {
+//
+// });
