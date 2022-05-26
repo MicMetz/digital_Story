@@ -7,9 +7,6 @@ import {TWEEN}               from "TWEEN";
 
 
 
-
-
-
 const objects = [];
 
 let raycaster;
@@ -50,7 +47,8 @@ var song1 = 'resources/audio/music/Glass.mp3'.toString();
 var song2 = 'resources/audio/music/Clubs_intro.mp3'.toString();
 var song3 = 'resources/audio/music/Clubs_Climax.mp3'.toString();
 
-var voices = new Audio();
+const songs = [new Audio(song1), new Audio(song2), new Audio(song3)];
+var voices  = [];
 
 
 
@@ -276,9 +274,9 @@ function HellScene(canvas) {
 					else {
 						toneShiftOne = true;
 						encased      = true;
-						// Horror.position.set(Horror.positionX, 8, Horror.positionZ);
-						Horror.position.copy( Horror.positionX, 8, Horror.positionZ );
-						Horror.quaternion.copy( Horror.quaternion );
+						Horror.position.set(Horror.positionX, 8, Horror.positionZ);
+						// Horror.position.copy(Horror.position);
+						// Horror.quaternion.copy(Horror.quaternion);
 					}
 				}
 			}
@@ -297,7 +295,7 @@ function HellScene(canvas) {
 					// toneShiftTwo = true;
 					// encased      = true;
 					// manitou
-					Horror.translateOnAxis(Horror.worldToLocal(new camera.position),1);
+					// Horror.translateOnAxis(Horror.worldToLocal(new camera.position),1);
 					// horrorTrack();
 
 				}
@@ -395,11 +393,11 @@ function HellScene(canvas) {
 		const fov     = 60;
 		const aspect  = 1920 / 1080;
 		const near    = 1.0;
-		const far     = 500.0;
+		const far     = 1500.0;
 		const aCamera = new THREE.PerspectiveCamera(fov, aspect, near, far);
 		aCamera.position.set(0, 2, 0);
 
-		userinterfaceCamera = new THREE.OrthographicCamera(-1, 1, 1 * aspect, -1 * aspect, 1, 1000);
+		userinterfaceCamera = new THREE.OrthographicCamera(-1, 1, 1 * aspect, -1 * aspect, 1, 1500);
 		userinterfaceScene  = new THREE.Scene();
 		return aCamera;
 	}
@@ -450,7 +448,7 @@ function HellScene(canvas) {
 			new THREE.BoxGeometry(200, 200, 4),
 			concreteMaterial);
 		wall1.name  = 'wall';
-		wall1.position.set(0, 0, -100);
+		wall1.position.set(0, -110, -100);
 		wall1.castShadow    = true;
 		wall1.receiveShadow = true;
 		aScene.add(wall1);
@@ -460,7 +458,7 @@ function HellScene(canvas) {
 			new THREE.BoxGeometry(200, 200, 4),
 			concreteMaterial);
 		wall2.name  = 'wall';
-		wall2.position.set(0, 0, 100);
+		wall2.position.set(0, -110, 100);
 		wall2.castShadow    = true;
 		wall2.receiveShadow = true;
 		aScene.add(wall2);
@@ -470,7 +468,7 @@ function HellScene(canvas) {
 			new THREE.BoxGeometry(4, 200, 200),
 			concreteMaterial);
 		wall3.name  = 'wall';
-		wall3.position.set(-100, 0, 0);
+		wall3.position.set(-100, -110, 0);
 		wall3.castShadow    = true;
 		wall3.receiveShadow = true;
 		aScene.add(wall3);
@@ -480,7 +478,7 @@ function HellScene(canvas) {
 			new THREE.BoxGeometry(4, 200, 200),
 			concreteMaterial);
 		wall4.name  = 'wall';
-		wall4.position.set(100, 0, 0);
+		wall4.position.set(100, -110, 0);
 		wall4.castShadow    = true;
 		wall4.receiveShadow = true;
 		aScene.add(wall4);
@@ -575,7 +573,7 @@ function HellScene(canvas) {
 
 	function initializeAudio_() {
 		// load a sound and set it as the Audio object's buffer
-		return musicSwitch(song1);
+		return musicSwitch(songs[0]);
 
 	}
 
@@ -626,8 +624,8 @@ function HellScene(canvas) {
 	}
 
 
-	function musicSwitch(audioUrl) {
-		currentSong        = new Audio(audioUrl);
+	function musicSwitch(audio) {
+		currentSong        = audio;
 		currentSong.volume = 0.5;
 		return currentSong;
 	}
@@ -680,7 +678,7 @@ function HellScene(canvas) {
 				velocity.y                      = 0;
 				controls.getObject().position.y = 10;
 
-				canJump  = true;
+				canJump = true;
 			}
 		}
 		else {
@@ -716,5 +714,7 @@ function animate() {
 	hellscene.update(time);
 
 }
+
+
 animate();
 
