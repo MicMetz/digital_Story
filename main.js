@@ -7,67 +7,7 @@ import {TWEEN}               from "TWEEN";
 
 
 
-const onKeyDown = function (event) {
-	switch (event.code) {
 
-		case 'ArrowUp':
-		case 'KeyW':
-			moveForward = true;
-			break;
-
-		case 'ArrowLeft':
-		case 'KeyA':
-			moveLeft = true;
-			break;
-
-		case 'ArrowDown':
-		case 'KeyS':
-			moveBackward = true;
-			break;
-
-		case 'ArrowRight':
-		case 'KeyD':
-			moveRight = true;
-			break;
-
-		case 'Space':
-			if (canJump === true) {
-				velocity.y += 350;
-			}
-			canJump = false;
-			break;
-
-	}
-
-};
-
-const onKeyUp = function (event) {
-
-	switch (event.code) {
-
-		case 'ArrowUp':
-		case 'KeyW':
-			moveForward = false;
-			break;
-
-		case 'ArrowLeft':
-		case 'KeyA':
-			moveLeft = false;
-			break;
-
-		case 'ArrowDown':
-		case 'KeyS':
-			moveBackward = false;
-			break;
-
-		case 'ArrowRight':
-		case 'KeyD':
-			moveRight = false;
-			break;
-
-	}
-
-};
 
 
 const objects = [];
@@ -98,20 +38,24 @@ var userinterfaceCamera;
 var firstPersonCamera;
 var music              = new Audio();
 var voiceOver          = new Audio();
+var currentVoice       = new Audio();
 var controls;
 const sceneList        = [0, 1, 2, 3];
-var blocker            = document.getElementById('blocker');
-var pausemenu          = document.getElementById('pause-menu');
-var startbutton        = document.getElementById('start-button');
-var song1 = 'resources/audio/Glass.mp3'.toString();
-var song2 = 'resources/audio/Clubs_intro.mp3'.toString();
-var song3 = 'resources/audio/Clubs_Climax.mp3'.toString();
+
+var blocker     = document.getElementById('blocker');
+var pausemenu   = document.getElementById('pause-menu');
+var startbutton = document.getElementById('start-button');
+
+var song1 = 'resources/audio/music/Glass.mp3'.toString();
+var song2 = 'resources/audio/music/Clubs_intro.mp3'.toString();
+var song3 = 'resources/audio/music/Clubs_Climax.mp3'.toString();
+
+var voices = new Audio();
+
+
 
 function HellScene(canvas) {
 	// currentSong     = new Audio();
-	var isPlaying    = false;
-	var isPlayable   = true;
-	var currentVoice = new Audio();
 	var previousRAF_ = null;
 
 	var loadedRender = false;
@@ -121,7 +65,11 @@ function HellScene(canvas) {
 	var loadedUser   = false;
 	var loadedAudio  = false;
 	var loadedHorror = false;
-	var isReady      = false;
+
+	var isFixed    = false;
+	var isReady    = false;
+	var isPlaying  = false;
+	var isPlayable = true;
 
 	var toneShiftOne   = false;
 	var toneShiftTwo   = false;
@@ -140,6 +88,70 @@ function HellScene(canvas) {
 	var manitou     = loadManitou();
 	const Horror    = loadHorror_();
 	var currentSong = initializeAudio_();
+
+	const onKeyDown = function (event) {
+		switch (event.code) {
+
+			case 'ArrowUp':
+			case 'KeyW':
+				moveForward = true;
+				break;
+
+			case 'ArrowLeft':
+			case 'KeyA':
+				moveLeft = true;
+				break;
+
+			case 'ArrowDown':
+			case 'KeyS':
+				moveBackward = true;
+				break;
+
+			case 'ArrowRight':
+			case 'KeyD':
+				moveRight = true;
+				break;
+
+			case 'Space':
+				if (canJump === true) {
+					velocity.y += 350;
+				}
+				canJump = false;
+				break;
+
+		}
+
+	};
+
+
+	const onKeyUp = function (event) {
+
+		switch (event.code) {
+
+			case 'ArrowUp':
+			case 'KeyW':
+				moveForward = false;
+				break;
+
+			case 'ArrowLeft':
+			case 'KeyA':
+				moveLeft = false;
+				break;
+
+			case 'ArrowDown':
+			case 'KeyS':
+				moveBackward = false;
+				break;
+
+			case 'ArrowRight':
+			case 'KeyD':
+				moveRight = false;
+				break;
+
+		}
+
+	};
+
 	_init(canvas);
 
 
@@ -250,41 +262,43 @@ function HellScene(canvas) {
 		// console.log(currentSong.currentTime);
 
 		if (isPlaying) {
-			if (!toneShiftOne && !encased) {
+			if (!toneShiftOne) {
 				// console.log("Initiated walling...");
-
-				if (currentSong.currentTime <= 45) {
-
-					// console.log("Tone shift #1");
-					scene.children.forEach(obj => {
-						if (obj.name === 'wall') {
-							obj.translateY(0.05);
-						}
-					});
-					// prevTime = currentSong.currentTime;
-					return;
-				}
-				else {
-					toneShiftOne = true;
-					encased      = true;
-
+				if (!encased) {
+					if (currentSong.currentTime <= 45) {
+						// console.log("Tone shift #1");
+						scene.children.forEach(obj => {
+							if (obj.name === 'wall') {
+								obj.translateY(0.05);
+							}
+						});
+					}
+					else {
+						toneShiftOne = true;
+						encased      = true;
+						// Horror.position.set(Horror.positionX, 8, Horror.positionZ);
+						Horror.position.copy( Horror.positionX, 8, Horror.positionZ );
+						Horror.quaternion.copy( Horror.quaternion );
+					}
 				}
 			}
 
 			// 20 seconds
-			if (toneShiftOne && !toneShiftTwo && currentSong.currentTime >= 50) {
+			if (toneShiftOne && !toneShiftTwo) {
 				console.log("Tone shift #2");
 
 				// manitou.position.set(manitou.positionX, -8, manitou.positionZ);
 				//
 				// aHorror.position.set(aHorror.positionX, 8, aHorror.positionZ);
 
-				// horrorTrack();
+				//
 
-				if (currentSong.currentTime >= 5555) {
-					toneShiftTwo = true;
-					encased      = true;
-
+				if (!toneShiftTwo) {
+					// toneShiftTwo = true;
+					// encased      = true;
+					// manitou
+					Horror.translateOnAxis(Horror.worldToLocal(new camera.position),1);
+					// horrorTrack();
 
 				}
 
@@ -323,7 +337,8 @@ function HellScene(canvas) {
 				const root = gltf.scene;
 				// root.lightingColor = '#9B7441';
 				// root.position.set(10, -20, 0);
-				root.position.set(10, 10, 0);
+				root.position.set(10, -10, 0);
+
 				// Horror = root;
 				scene.add(root);
 			},
@@ -665,14 +680,14 @@ function HellScene(canvas) {
 				velocity.y                      = 0;
 				controls.getObject().position.y = 10;
 
-				canJump = true;
-				prevTime = time;
+				canJump  = true;
 			}
 		}
 		else {
 			pauseMusicAudio();
 		}
 
+		prevTime = time;
 		renderer.render(scene, camera);
 	}
 }
