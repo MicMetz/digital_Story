@@ -103,7 +103,9 @@ const sceneList        = [0, 1, 2, 3];
 var blocker            = document.getElementById('blocker');
 var pausemenu          = document.getElementById('pause-menu');
 var startbutton        = document.getElementById('start-button');
-
+var song1 = 'resources/audio/Glass.mp3'.toString();
+var song2 = 'resources/audio/Clubs_intro.mp3'.toString();
+var song3 = 'resources/audio/Clubs_Climax.mp3'.toString();
 
 function HellScene(canvas) {
 	// currentSong     = new Audio();
@@ -558,7 +560,7 @@ function HellScene(canvas) {
 
 	function initializeAudio_() {
 		// load a sound and set it as the Audio object's buffer
-		return musicSwitch('resources/audio/Glass.mp3');
+		return musicSwitch(song1);
 
 	}
 
