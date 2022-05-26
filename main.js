@@ -7,6 +7,69 @@ import {TWEEN}               from "TWEEN";
 
 
 
+const onKeyDown = function (event) {
+	switch (event.code) {
+
+		case 'ArrowUp':
+		case 'KeyW':
+			moveForward = true;
+			break;
+
+		case 'ArrowLeft':
+		case 'KeyA':
+			moveLeft = true;
+			break;
+
+		case 'ArrowDown':
+		case 'KeyS':
+			moveBackward = true;
+			break;
+
+		case 'ArrowRight':
+		case 'KeyD':
+			moveRight = true;
+			break;
+
+		case 'Space':
+			if (canJump === true) {
+				velocity.y += 350;
+			}
+			canJump = false;
+			break;
+
+	}
+
+};
+
+const onKeyUp = function (event) {
+
+	switch (event.code) {
+
+		case 'ArrowUp':
+		case 'KeyW':
+			moveForward = false;
+			break;
+
+		case 'ArrowLeft':
+		case 'KeyA':
+			moveLeft = false;
+			break;
+
+		case 'ArrowDown':
+		case 'KeyS':
+			moveBackward = false;
+			break;
+
+		case 'ArrowRight':
+		case 'KeyD':
+			moveRight = false;
+			break;
+
+	}
+
+};
+
+
 const objects = [];
 
 let raycaster;
@@ -39,22 +102,11 @@ var controls;
 const sceneList        = [0, 1, 2, 3];
 var blocker            = document.getElementById('blocker');
 var pausemenu          = document.getElementById('pause-menu');
-
+var startbutton        = document.getElementById('start-button');
 
 
 function HellScene(canvas) {
-	const renderer = buildRenderer(canvas);
-	const scene    = buildScene();
-	const camera   = buildCamera();
-	// const firstPersonCamera         = buildPerson();
-	// const sun        = buildSun();
-	// const water      = buildWater();
-	const orbitCon = setOrbitControls();
-	var manitou    = loadManitou();
-	const Horror   = loadHorror_();
-
 	// currentSong     = new Audio();
-	var currentSong  = null;
 	var isPlaying    = false;
 	var isPlayable   = true;
 	var currentVoice = new Audio();
@@ -76,101 +128,70 @@ function HellScene(canvas) {
 	var toneShiftFive  = false;
 	var encased        = false;
 
-	initializeAudio_();
-	controls = new PointerLockControls(camera, document.body);
-	// controls = new PointerLockControls(camera, renderer.domElement);
-
-	pausemenu.addEventListener('click', function () {
-		controls.lock();
-	});
-
-
-	controls.addEventListener('lock', function () {
-		pausemenu.style.display = '';
-		blocker.style.display   = 'none';
-		if (currentSong.isPaused) {
-			currentSong.resume();
-		}
-	});
-
-	controls.addEventListener('unlock', function () {
-		blocker.style.display   = 'block';
-		pausemenu.style.display = 'block';
-		if (currentSong.isPlaying) {
-			currentSong.pause();
-		}
-	});
-	scene.add(controls.getObject());
-
-	const onKeyDown = function (event) {
-		switch (event.code) {
-
-			case 'ArrowUp':
-			case 'KeyW':
-				moveForward = true;
-				break;
-
-			case 'ArrowLeft':
-			case 'KeyA':
-				moveLeft = true;
-				break;
-
-			case 'ArrowDown':
-			case 'KeyS':
-				moveBackward = true;
-				break;
-
-			case 'ArrowRight':
-			case 'KeyD':
-				moveRight = true;
-				break;
-
-			case 'Space':
-				if (canJump === true) {
-					velocity.y += 350;
-				}
-				canJump = false;
-				break;
-
-		}
-
-	};
-
-	const onKeyUp = function (event) {
-
-		switch (event.code) {
-
-			case 'ArrowUp':
-			case 'KeyW':
-				moveForward = false;
-				break;
-
-			case 'ArrowLeft':
-			case 'KeyA':
-				moveLeft = false;
-				break;
-
-			case 'ArrowDown':
-			case 'KeyS':
-				moveBackward = false;
-				break;
-
-			case 'ArrowRight':
-			case 'KeyD':
-				moveRight = false;
-				break;
-
-		}
-
-	};
-
-	document.addEventListener('keydown', onKeyDown);
-	document.addEventListener('keyup', onKeyUp);
-	raycaster = new THREE.Raycaster(new THREE.Vector3(), new THREE.Vector3(0, -1, 0), 0, 10);
-	document.body.appendChild(renderer.domElement);
+	const renderer = buildRenderer(canvas);
+	const scene    = buildScene();
+	const camera   = buildCamera();
+	// const firstPersonCamera         = buildPerson();
+	// const sun        = buildSun();
+	// const water      = buildWater();
+	const orbitCon  = setOrbitControls();
+	var manitou     = loadManitou();
+	const Horror    = loadHorror_();
+	var currentSong = initializeAudio_();
+	_init(canvas);
 
 
-	// animate();
+
+	function _init(canvas) {
+
+		controls = new PointerLockControls(camera, document.body);
+		// controls = new PointerLockControls(camera, renderer.domElement);
+
+		const eventReady = new CustomEvent('ready', {
+			isReady: true,
+			detail:  {text: () => textarea.value}
+		});
+
+		pausemenu.addEventListener('click', function () {
+			if (isReady) {
+				controls.lock();
+			}
+		});
+
+		controls.addEventListener('lock', function () {
+			pausemenu.style.display = '';
+			blocker.style.display   = 'none';
+			if (currentSong.isPaused) {
+				currentSong.resume();
+			}
+		});
+
+		controls.addEventListener('unlock', function () {
+			blocker.style.display   = 'block';
+			pausemenu.style.display = 'block';
+			if (currentSong.isPlaying) {
+				currentSong.pause();
+			}
+		});
+		scene.add(controls.getObject());
+
+		document.addEventListener('keydown', onKeyDown);
+		document.addEventListener('keyup', onKeyUp);
+		raycaster = new THREE.Raycaster(new THREE.Vector3(), new THREE.Vector3(0, -1, 0), 0, 10);
+		document.body.appendChild(renderer.domElement);
+
+		isReady = true;
+		startbutton.classList.add(".ready");
+		setReady(true);
+	}
+
+
+	// init().then(r => {
+	// 	// animate();
+	// 	pausemenu.add(".ready");
+	// 	setReady(true);
+	//
+	// });
 
 
 	function setOrbitControls() {
@@ -335,19 +356,20 @@ function HellScene(canvas) {
 
 
 	function buildRenderer(canvas) {
-		const rend             = new THREE.WebGLRenderer({
+		const renderer             = new THREE.WebGLRenderer({
 			antialias: false,
 		});
-		rend.shadowMap.enabled = true;
-		rend.shadowMap.type    = THREE.PCFSoftShadowMap;
-		rend.setPixelRatio(window.devicePixelRatio);
-		rend.setSize(window.innerWidth, window.innerHeight);
-		rend.physicallyCorrectLights = true;
-		rend.outputEncoding          = THREE.sRGBEncoding;
-		rend.gammaFactor             = 1.2;
-		rend.gammaOutput             = 2.2;
-		canvas.appendChild(rend.domElement);
-		return rend;
+		renderer.shadowMap.enabled = true;
+		renderer.shadowMap.type    = THREE.PCFSoftShadowMap;
+		renderer.setPixelRatio(window.devicePixelRatio);
+		renderer.setSize(window.innerWidth, window.innerHeight);
+		renderer.physicallyCorrectLights = true;
+		renderer.outputEncoding          = THREE.sRGBEncoding;
+		renderer.gammaFactor             = 1.2;
+		renderer.gammaOutput             = 2.2;
+		canvas.appendChild(renderer.domElement);
+		loadedRender = true;
+		return renderer;
 
 	}
 
@@ -404,43 +426,44 @@ function HellScene(canvas) {
 		plane.rotation.x    = -Math.PI / 2;
 		aScene.add(plane);
 
-
-
-
 		const concreteMaterial = loadMaterial_('concrete3-', 4);
 
+		// Back wall
 		const wall1 = new THREE.Mesh(
-			new THREE.BoxGeometry(50, 100, 4),
+			new THREE.BoxGeometry(200, 200, 4),
 			concreteMaterial);
 		wall1.name  = 'wall';
-		wall1.position.set(0, -85, -20);
+		wall1.position.set(0, 0, -100);
 		wall1.castShadow    = true;
 		wall1.receiveShadow = true;
 		aScene.add(wall1);
 
+		// Forward wall
 		const wall2 = new THREE.Mesh(
-			new THREE.BoxGeometry(50, 100, 4),
+			new THREE.BoxGeometry(200, 200, 4),
 			concreteMaterial);
 		wall2.name  = 'wall';
-		wall2.position.set(0, -85, 20);
+		wall2.position.set(0, 0, 100);
 		wall2.castShadow    = true;
 		wall2.receiveShadow = true;
 		aScene.add(wall2);
 
+		// Right wall
 		const wall3 = new THREE.Mesh(
-			new THREE.BoxGeometry(4, 100, 50),
+			new THREE.BoxGeometry(4, 200, 200),
 			concreteMaterial);
 		wall3.name  = 'wall';
-		wall3.position.set(20, -85, 0);
+		wall3.position.set(-100, 0, 0);
 		wall3.castShadow    = true;
 		wall3.receiveShadow = true;
 		aScene.add(wall3);
 
+		// Left wall
 		const wall4 = new THREE.Mesh(
-			new THREE.BoxGeometry(4, 100, 50),
+			new THREE.BoxGeometry(4, 200, 200),
 			concreteMaterial);
 		wall4.name  = 'wall';
-		wall4.position.set(-20, -85, 0);
+		wall4.position.set(100, 0, 0);
 		wall4.castShadow    = true;
 		wall4.receiveShadow = true;
 		aScene.add(wall4);
@@ -535,7 +558,7 @@ function HellScene(canvas) {
 
 	function initializeAudio_() {
 		// load a sound and set it as the Audio object's buffer
-		musicSwitch('resources/audio/Glass.mp3');
+		return musicSwitch('resources/audio/Glass.mp3');
 
 	}
 
@@ -548,11 +571,11 @@ function HellScene(canvas) {
 
 		}
 		// console.log("play called in");
-		var
-			// TODO:
-			isPlayable = false;
-		isPlaying      = true;
-		const promise  = currentSong.play();
+
+		// TODO:
+		isPlayable    = false;
+		isPlaying     = true;
+		const promise = currentSong.play();
 		if (promise !== undefined) {
 			promise.catch((e) => {
 				// console.log("Failure Playing");
@@ -565,14 +588,32 @@ function HellScene(canvas) {
 	}
 
 
+	function pauseMusicAudio() {
+
+		if (isPlaying === true) {
+			// console.log("play called returned");
+			isPlayable = true;
+			isPlaying  = false;
+
+		}
+		// console.log("play called in");
+
+		const promise = currentSong.pause();
+		if (promise !== undefined) {
+			promise.catch((e) => {
+				// console.log("Failure Playing");
+				isPlayable = false;
+				isPlaying  = true;
+			})
+		}
+	}
 
 
 	function musicSwitch(audioUrl) {
 		currentSong        = new Audio(audioUrl);
 		currentSong.volume = 0.5;
-
+		return currentSong;
 	}
-
 
 
 
@@ -623,12 +664,12 @@ function HellScene(canvas) {
 				controls.getObject().position.y = 10;
 
 				canJump = true;
-
+				prevTime = time;
 			}
 		}
-
-
-		prevTime = time;
+		else {
+			pauseMusicAudio();
+		}
 
 		renderer.render(scene, camera);
 	}
@@ -651,7 +692,6 @@ const canvas    = document.getElementById("canvas");
 const hellscene = new HellScene(canvas);
 
 
-
 function animate() {
 	requestAnimationFrame(animate);
 	const time = performance.now();
@@ -659,11 +699,5 @@ function animate() {
 	hellscene.update(time);
 
 }
-
-
 animate();
 
-//
-// window.addEventListener('DOMContentLoaded', () => {
-//
-// });
