@@ -138,15 +138,17 @@ function OceanScene(canvas) {
 	window.addEventListener('resize', onWindowResize);
 }
 
+//
+// const canvas       = document.getElementById("canvas");
+// const sceneManager = new OceanScene(canvas);
+//
+//
+// function animate() {
+// 	requestAnimationFrame(animate);
+// 	sceneManager.update();
+// }
+//
+//
+// animate();
 
-const canvas       = document.getElementById("canvas");
-const sceneManager = new OceanScene(canvas);
-
-
-function animate() {
-	requestAnimationFrame(animate);
-	sceneManager.update();
-}
-
-
-animate();
+export {OceanScene}

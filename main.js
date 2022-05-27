@@ -3,11 +3,14 @@ import {GLTFLoader}          from 'GLTFLoader';
 import {PointerLockControls} from "PointerLockControls";
 import {OrbitControls}       from "OrbitControls";
 import {TWEEN}               from "TWEEN";
+import {OceanScene}          from "./scenes/OceanScene.js";
+import {HellScene}          from "./scenes/HellScene.js";
 
 
 
 
 const objects = [];
+const time    = new THREE.Clock(true);
 
 let raycaster;
 
@@ -25,10 +28,69 @@ const color     = new THREE.Color();
 
 
 
-// mouseAudio = new MouseAudio(document.getElementById('canvas'), document.getElementById('audio'));
+const onKeyDown = function (event) {
+	switch (event.code) {
+
+		case 'ArrowUp':
+		case 'KeyW':
+			moveForward = true;
+			break;
+
+		case 'ArrowLeft':
+		case 'KeyA':
+			moveLeft = true;
+			break;
+
+		case 'ArrowDown':
+		case 'KeyS':
+			moveBackward = true;
+			break;
+
+		case 'ArrowRight':
+		case 'KeyD':
+			moveRight = true;
+			break;
+
+		case 'Space':
+			if (canJump === true) {
+				velocity.y += 350;
+			}
+			canJump = false;
+			break;
+
+	}
+
+};
 
 
-var activeScene        = null;
+const onKeyUp = function (event) {
+
+	switch (event.code) {
+
+		case 'ArrowUp':
+		case 'KeyW':
+			moveForward = false;
+			break;
+
+		case 'ArrowLeft':
+		case 'KeyA':
+			moveLeft = false;
+			break;
+
+		case 'ArrowDown':
+		case 'KeyS':
+			moveBackward = false;
+			break;
+
+		case 'ArrowRight':
+		case 'KeyD':
+			moveRight = false;
+			break;
+
+	}
+
+};
+
 var camera             = null;
 var userinterfaceScene = null;
 var userinterfaceCamera;
@@ -37,7 +99,6 @@ var music              = new Audio();
 var voiceOver          = new Audio();
 var currentVoice       = new Audio();
 var controls;
-const sceneList        = [0, 1, 2, 3];
 
 var blocker     = document.getElementById('blocker');
 var pausemenu   = document.getElementById('pause-menu');
@@ -50,12 +111,16 @@ var song3 = 'resources/audio/music/Clubs_Climax.mp3'.toString();
 const songs = [new Audio(song1), new Audio(song2), new Audio(song3)];
 var voices  = [];
 
+var SCENE_       = null;
+var SCENE_INDEX  = 0;
+var SCENE_ACTIVE = false;
 
 
-function HellScene(canvas) {
+function SequenceManager() {
 	// currentSong     = new Audio();
 	var previousRAF_ = null;
-
+	var currentScene = 0;
+	var firstStart   = true;
 	var loadedRender = false;
 	var loadedLights = false;
 	var loadedHell   = false;
@@ -80,81 +145,47 @@ function HellScene(canvas) {
 	const scene    = buildScene();
 	const camera   = buildCamera();
 	// const firstPersonCamera         = buildPerson();
-	// const sun        = buildSun();
-	// const water      = buildWater();
-	const orbitCon  = setOrbitControls();
-	var manitou     = loadManitou();
-	const Horror    = loadHorror_();
+	// const orbitCon  = setOrbitControls();
+	// var manitou     = loadManitou_();
+	// const Horror    = loadHorror_();
 	var currentSong = initializeAudio_();
-
-	const onKeyDown = function (event) {
-		switch (event.code) {
-
-			case 'ArrowUp':
-			case 'KeyW':
-				moveForward = true;
-				break;
-
-			case 'ArrowLeft':
-			case 'KeyA':
-				moveLeft = true;
-				break;
-
-			case 'ArrowDown':
-			case 'KeyS':
-				moveBackward = true;
-				break;
-
-			case 'ArrowRight':
-			case 'KeyD':
-				moveRight = true;
-				break;
-
-			case 'Space':
-				if (canJump === true) {
-					velocity.y += 350;
-				}
-				canJump = false;
-				break;
-
-		}
-
-	};
+	init(canvas);
 
 
-	const onKeyUp = function (event) {
+	function buildScene() {
+		const scene = new THREE.Scene();
+		return scene;
+	}
 
-		switch (event.code) {
+	function buildRenderer(canvas_) {
+		const renderer             = new THREE.WebGLRenderer({
+			antialias: false,
+		});
+		renderer.shadowMap.enabled = true;
+		renderer.shadowMap.type    = THREE.PCFSoftShadowMap;
+		renderer.setPixelRatio(window.devicePixelRatio);
+		renderer.setSize(window.innerWidth, window.innerHeight);
+		renderer.physicallyCorrectLights = true;
+		renderer.outputEncoding          = THREE.sRGBEncoding;
+		renderer.gammaFactor             = 1.2;
+		renderer.gammaOutput             = 2.2;
+		canvas_.appendChild(renderer.domElement);
+		// loadedRender = true;
+		return renderer;
 
-			case 'ArrowUp':
-			case 'KeyW':
-				moveForward = false;
-				break;
+	}
 
-			case 'ArrowLeft':
-			case 'KeyA':
-				moveLeft = false;
-				break;
-
-			case 'ArrowDown':
-			case 'KeyS':
-				moveBackward = false;
-				break;
-
-			case 'ArrowRight':
-			case 'KeyD':
-				moveRight = false;
-				break;
-
-		}
-
-	};
-
-	_init(canvas);
+	function setReady(b) {
+		isReady = b;
+	}
 
 
+	function checkReady() {
+		return isReady;
+	}
 
-	function _init(canvas) {
+
+	async function init(canvas) {
 
 		controls = new PointerLockControls(camera, document.body);
 		// controls = new PointerLockControls(camera, renderer.domElement);
@@ -176,6 +207,7 @@ function HellScene(canvas) {
 			if (currentSong.isPaused) {
 				currentSong.resume();
 			}
+
 		});
 
 		controls.addEventListener('unlock', function () {
@@ -195,8 +227,22 @@ function HellScene(canvas) {
 		isReady = true;
 		startbutton.classList.add(".ready");
 		setReady(true);
+		await sceneSwitcher();
 	}
 
+
+
+	async function sceneSwitcher() {
+		if (SCENE_INDEX === 0) {
+			SCENE_ = new HellScene(camera, scene, renderer, controls, userinterfaceCamera, userinterfaceScene, canvas);
+		}
+
+		if (SCENE_INDEX === 1) {
+			SCENE_ = new OceanScene(camera, scene, renderer, controls, userinterfaceCamera, userinterfaceScene, canvas);
+		}
+		SCENE_INDEX++;
+		SCENE_ACTIVE = true;
+	}
 
 	// init().then(r => {
 	// 	// animate();
@@ -205,38 +251,26 @@ function HellScene(canvas) {
 	//
 	// });
 
+	//
+	// function setOrbitControls() {
+	// 	const controls         = new OrbitControls(camera, renderer.domElement);
+	// 	controls.maxPolarAngle = Math.PI * 0.495;
+	// 	controls.target.set(0, 2, 0);
+	// 	controls.minDistance = 1.0;
+	// 	controls.maxDistance = 2.0;
+	// 	controls.update();
+	// 	return controls;
+	// }
 
-	function setOrbitControls() {
-		const controls         = new OrbitControls(camera, renderer.domElement);
-		controls.maxPolarAngle = Math.PI * 0.495;
-		controls.target.set(0, 2, 0);
-		controls.minDistance = 1.0;
-		controls.maxDistance = 2.0;
-		controls.update();
-		return controls;
-	}
-
-
-	function loadManitou() {
-		const man = new THREE.Mesh(
-			new THREE.BoxGeometry(10, 10, 10),
-			loadMaterial_('vintage-tile1_', 0.2));
-		man.position.set(10, 5, 0);
-		man.castShadow    = true;
-		man.receiveShadow = true;
-		scene.add(man);
-		return man;
-	}
-
-
-	function setReady(b) {
-		isReady = b;
-	}
-
-
-	function checkReady() {
-		return isReady;
-	}
+	//
+	// function setReady(b) {
+	// 	isReady = b;
+	// }
+	//
+	//
+	// function checkReady() {
+	// 	return isReady;
+	// }
 
 
 	//
@@ -255,138 +289,202 @@ function HellScene(canvas) {
 	//
 	// }
 
-
-	function updateSequence(timeElapsed) {
-		// console.log(currentSong.currentTime);
-
-		if (isPlaying) {
-			if (!toneShiftOne) {
-				// console.log("Initiated walling...");
-				if (!encased) {
-					if (currentSong.currentTime <= 45) {
-						// console.log("Tone shift #1");
-						scene.children.forEach(obj => {
-							if (obj.name === 'wall') {
-								obj.translateY(0.05);
-							}
-						});
-					}
-					else {
-						toneShiftOne = true;
-						encased      = true;
-						Horror.position.set(Horror.positionX, 8, Horror.positionZ);
-						// Horror.position.copy(Horror.position);
-						// Horror.quaternion.copy(Horror.quaternion);
-					}
-				}
-			}
-
-			// 20 seconds
-			if (toneShiftOne && !toneShiftTwo) {
-				console.log("Tone shift #2");
-
-				// manitou.position.set(manitou.positionX, -8, manitou.positionZ);
-				//
-				// aHorror.position.set(aHorror.positionX, 8, aHorror.positionZ);
-
-				//
-
-				if (!toneShiftTwo) {
-					// toneShiftTwo = true;
-					// encased      = true;
-					// manitou
-					// Horror.translateOnAxis(Horror.worldToLocal(new camera.position),1);
-					// horrorTrack();
-
-				}
-
-			}
-
-			if (toneShiftTwo && !toneShiftThree && currentSong.currentTime >= 50) {
-				console.log("Tone shift #3");
-				toneShiftThree = true;
-
-				// for (var i = 0; i < 4; i++) {
-				// 	var selectedObject = scene1.getObjectByName('wall');
-				// 	scene1.remove(selectedObject);
-				// }
-			}
-
-			if (toneShiftThree && !toneShiftFour && currentSong.currentTime >= 135) {
-				console.log("Tone shift #4");
-				toneShiftFour = true;
-			}
-
-			if (toneShiftFour && !toneShiftFive && currentSong.currentTime >= 50) {
-				// console.log("Tone shift #5");
-				toneShiftFive = true;
-			}
-			// currentSong.currentTime >= 135
-
-		}
-
-	}
-
-
-	async function loadHorror_() {
-		const gltfLoader = new GLTFLoader();
-		let hurl         = './resources/entities/demon/scene.gltf'.toString();
-		const horror     = await Promise.all([gltfLoader.load(hurl, function (gltf) {
-				const root = gltf.scene;
-				// root.lightingColor = '#9B7441';
-				// root.position.set(10, -20, 0);
-				root.position.set(10, -10, 0);
-
-				// Horror = root;
-				scene.add(root);
-			},
-			function (xhr) {
-
-				console.log((xhr.loaded / xhr.total * 100) + '% loaded');
-				// this.loadedHorror = true;
-
-			},
-			// called when loading has errors
-			function (error) {
-				console.log('An error happened');
-			})]);
-		console.log("Horror set...");
-
-		return horror.scene;
-	}
-
-
-	function horrorTrack() {
-		console.log('start');
-		new TWEEN.Tween(Horror.position)
-			.to(camera.position, 700) // destination, duration
-			.start() // start now
-	}
-
-
-	// function buildPerson() {
-	// 	firstPersonCamera = new FirstPersonCamera(camera, objects);
-	// 	// return loadedUser = true;
+	//
+	// function updateSequence(timeElapsed) {
+	// 	// console.log(currentSong.currentTime);
+	// 	if (!SCENE_ACTIVE) {
+	// 		return SCENE_SWITCHER();
+	// 	}
+	// 	if (isPlaying) {
+	// 		if (!toneShiftOne) {
+	// 			// console.log("Initiated walling...");
+	// 			if (!encased) {
+	// 				if (currentSong.currentTime <= 45) {
+	// 					// console.log("Tone shift #1");
+	// 					scene.children.forEach(obj => {
+	// 						if (obj.name === 'wall') {
+	// 							obj.translateY(0.05);
+	// 						}
+	// 					});
+	// 				}
+	// 				else {
+	// 					toneShiftOne = true;
+	// 					encased      = true;
+	// 					Horror.position.set(Horror.positionX, 8, Horror.positionZ);
+	// 					// Horror.position.copy(Horror.position);
+	// 					// Horror.quaternion.copy(Horror.quaternion);
+	// 				}
+	// 			}
+	// 		}
+	//
+	// 		// 20 seconds
+	// 		if (toneShiftOne && !toneShiftTwo) {
+	// 			console.log("Tone shift #2");
+	// 			SCENE_ACTIVE = false;
+	// 			// manitou.position.set(manitou.positionX, -8, manitou.positionZ);
+	// 			//
+	// 			// aHorror.position.set(aHorror.positionX, 8, aHorror.positionZ);
+	//
+	// 			//
+	//
+	// 			if (!toneShiftTwo) {
+	// 				// toneShiftTwo = true;
+	// 				// encased      = true;
+	// 				// manitou
+	// 				// Horror.translateOnAxis(Horror.worldToLocal(new camera.position),1);
+	// 				// horrorTrack();
+	//
+	// 			}
+	//
+	// 		}
+	//
+	// 		if (toneShiftTwo && !toneShiftThree && currentSong.currentTime >= 50) {
+	// 			console.log("Tone shift #3");
+	// 			toneShiftThree = true;
+	//
+	// 			// for (var i = 0; i < 4; i++) {
+	// 			// 	var selectedObject = scene1.getObjectByName('wall');
+	// 			// 	scene1.remove(selectedObject);
+	// 			// }
+	// 		}
+	//
+	// 		if (toneShiftThree && !toneShiftFour && currentSong.currentTime >= 135) {
+	// 			console.log("Tone shift #4");
+	// 			toneShiftFour = true;
+	// 		}
+	//
+	// 		if (toneShiftFour && !toneShiftFive && currentSong.currentTime >= 50) {
+	// 			// console.log("Tone shift #5");
+	// 			toneShiftFive = true;
+	// 		}
+	// 		// currentSong.currentTime >= 135
+	//
+	// 	}
+	//
+	// }
+	//
+	//
+	// async function loadHawks() {
+	// 	const loader = new GLTFLoader();
+	//
+	// 	const parrotData = await loader.loadAsync('/assets/models/Parrot.glb');
+	//
+	// 	console.log('Squaaawk!', parrotData);
+	// }
+	//
+	//
+	// //
+	// async function loadManitou_() {
+	// 	const man = new THREE.Mesh(
+	// 		new THREE.BoxGeometry(10, 10, 10),
+	// 		loadMaterial_('vintage-tile1_', 0.2));
+	// 	man.position.set(10, 5, 0);
+	// 	man.castShadow    = true;
+	// 	man.receiveShadow = true;
+	// 	scene.add(man);
+	// 	return man;
+	// }
+	//
+	//
+	// async function loadSpecter_() {
+	// 	//. MTL material file loader
+	// 	var mtlLoader = new THREE.MTLLoader();
+	// 	//. obj geometry file loader
+	// 	var objLoader = new THREE.OBJLoader();
+	//
+	// 	mtlLoader.load('./resources/entities/specter/spectral_demon_by_dommk.mtl', function (materials) {
+	// 		objLoader.setMaterials(materials)
+	// 		         .load('./resources/entities/specter/spectral_demon_by_dommk.obj', function (obj) {
+	// 			         scene.add(obj);
+	//
+	// 		         });
+	// 	});
+	// 	return mtlLoader;
+	// }
+	//
+	//
+	// async function loadDemon_() {
+	// 	//. MTL material file loader
+	// 	var mtlLoader = new THREE.MTLLoader();
+	// 	//. obj geometry file loader
+	// 	var objLoader = new THREE.OBJLoader();
+	//
+	// 	mtlLoader.load('./resources/entities/demon/Demon_skull.OBJ');
+	// 	scene.add(mtlLoader.scene)
+	// 	return mtlLoader;
+	// }
+	//
+	//
+	// async function loadChair_() {
+	// 	//. MTL material file loader
+	// 	var mtlLoader = new THREE.MTLLoader();
+	// 	//. obj geometry file loader
+	// 	var objLoader = new THREE.OBJLoader();
+	//
+	// 	mtlLoader.load('./chair.mtl', function (materials) {
+	// 		objLoader.setMaterials(materials)
+	// 		         .load('./chair.obj', function (obj) {
+	// 			         scene.add(obj);
+	//
+	// 		         });
+	// 	});
+	// 	return mtlLoader;
+	// }
+	//
+	//
+	// async function loadHorror_() {
+	// 	const gltfLoader = new GLTFLoader();
+	// 	let hurl         = './resources/entities/demon/scene.gltf'.toString();
+	// 	const horror     = await Promise.all([gltfLoader.load(hurl, function (gltf) {
+	// 			const root         = gltf.scene;
+	// 			root.lightingColor = '#9B7441';
+	// 			// root.position.set(10, -20, 0);
+	// 			root.position.set(10, -10, 0);
+	//
+	// 			// Horror = root;
+	// 			scene.add(root);
+	// 		},
+	// 		function (xhr) {
+	//
+	// 			console.log((xhr.loaded / xhr.total * 100) + '% loaded');
+	// 			// this.loadedHorror = true;
+	//
+	// 		},
+	// 		// called when loading has errors
+	// 		function (error) {
+	// 			console.log('An error happened');
+	// 		})]);
+	// 	console.log("Horror set...");
+	//
+	// 	return horror.scene;
+	// }
+	//
+	//
+	// function horrorTrack() {
+	// 	console.log('start');
+	// 	new TWEEN.Tween(Horror.position)
+	// 		.to(camera.position, 700) // destination, duration
+	// 		.start() // start now
 	// }
 
 
-	function buildRenderer(canvas) {
-		const renderer             = new THREE.WebGLRenderer({
-			antialias: false,
-		});
-		renderer.shadowMap.enabled = true;
-		renderer.shadowMap.type    = THREE.PCFSoftShadowMap;
-		renderer.setPixelRatio(window.devicePixelRatio);
-		renderer.setSize(window.innerWidth, window.innerHeight);
-		renderer.physicallyCorrectLights = true;
-		renderer.outputEncoding          = THREE.sRGBEncoding;
-		renderer.gammaFactor             = 1.2;
-		renderer.gammaOutput             = 2.2;
-		canvas.appendChild(renderer.domElement);
-		loadedRender = true;
-		return renderer;
-
-	}
+	// function buildRenderer(canvas) {
+	// 	const renderer             = new THREE.WebGLRenderer({
+	// 		antialias: false,
+	// 	});
+	// 	renderer.shadowMap.enabled = true;
+	// 	renderer.shadowMap.type    = THREE.PCFSoftShadowMap;
+	// 	renderer.setPixelRatio(window.devicePixelRatio);
+	// 	renderer.setSize(window.innerWidth, window.innerHeight);
+	// 	renderer.physicallyCorrectLights = true;
+	// 	renderer.outputEncoding          = THREE.sRGBEncoding;
+	// 	renderer.gammaFactor             = 1.2;
+	// 	renderer.gammaOutput             = 2.2;
+	// 	canvas.appendChild(renderer.domElement);
+	// 	loadedRender = true;
+	// 	return renderer;
+	//
+	// }
 
 
 	function buildCamera() {
@@ -396,110 +494,111 @@ function HellScene(canvas) {
 		const far     = 1500.0;
 		const aCamera = new THREE.PerspectiveCamera(fov, aspect, near, far);
 		aCamera.position.set(0, 2, 0);
-
+		// aCamera.lookAt(new THREE.Vector3(-20, -20, -15));
 		userinterfaceCamera = new THREE.OrthographicCamera(-1, 1, 1 * aspect, -1 * aspect, 1, 1500);
 		userinterfaceScene  = new THREE.Scene();
 		return aCamera;
 	}
 
 
-	function buildScene() {
-		const aScene  = new THREE.Scene();
-		const loader  = new THREE.CubeTextureLoader();
-		const texture = loader.load([
-			'./resources/skybox/sunsetflat_ft.jpg',
-			'./resources/skybox/sunsetflat_bk.jpg',
-			'./resources/skybox/sunsetflat_up.jpg',
-			'./resources/skybox/sunsetflat_dn.jpg',
-			'./resources/skybox/sunsetflat_rt.jpg',
-			'./resources/skybox/sunsetflat_lf.jpg',
-		]);
+	// function buildScene() {
+	// 	const aScene  = new THREE.Scene();
+	// 	const loader  = new THREE.CubeTextureLoader();
+	// 	const texture = loader.load([
+	// 		'./resources/skybox/sunsetflat_ft.jpg',
+	// 		'./resources/skybox/sunsetflat_bk.jpg',
+	// 		'./resources/skybox/sunsetflat_up.jpg',
+	// 		'./resources/skybox/sunsetflat_dn.jpg',
+	// 		'./resources/skybox/sunsetflat_rt.jpg',
+	// 		'./resources/skybox/sunsetflat_lf.jpg',
+	// 	]);
+	//
+	// 	texture.encoding                = THREE.sRGBEncoding;
+	// 	aScene.background               = texture;
+	// 	aScene.background.lightingColor = '#9B7441';
+	// 	// aScene1.background.intensity
+	// 	const light                     = new THREE.AmbientLight(0x404040); // soft white light
+	// 	light.intensity                 = 3;
+	// 	aScene.add(light);
+	//
+	// 	const mapLoader     = new THREE.TextureLoader();
+	// 	const maxAnisotropy = renderer.capabilities.getMaxAnisotropy();
+	//
+	// 	const trak_base      = mapLoader.load('resources/tileKit/trak_base.jpg');
+	// 	trak_base.anisotropy = maxAnisotropy;
+	// 	trak_base.wrapS      = THREE.RepeatWrapping;
+	// 	trak_base.wrapT      = THREE.RepeatWrapping;
+	// 	trak_base.repeat.set(32, 32);
+	// 	trak_base.encoding = THREE.sRGBEncoding;
+	//
+	// 	const plane         = new THREE.Mesh(
+	// 		new THREE.PlaneGeometry(1000, 1000, 10, 10),
+	// 		new THREE.MeshStandardMaterial({map: trak_base}));
+	// 	plane.castShadow    = false;
+	// 	plane.receiveShadow = true;
+	// 	plane.rotation.x    = -Math.PI / 2;
+	// 	aScene.add(plane);
+	//
+	// 	const concreteMaterial = loadMaterial_('concrete3-', 4);
+	//
+	// 	// Back wall
+	// 	const wall1 = new THREE.Mesh(
+	// 		new THREE.BoxGeometry(200, 200, 4),
+	// 		concreteMaterial);
+	// 	wall1.name  = 'wall';
+	// 	wall1.position.set(0, -110, -100);
+	// 	wall1.castShadow    = true;
+	// 	wall1.receiveShadow = true;
+	// 	aScene.add(wall1);
+	//
+	// 	// Forward wall
+	// 	const wall2 = new THREE.Mesh(
+	// 		new THREE.BoxGeometry(200, 200, 4),
+	// 		concreteMaterial);
+	// 	wall2.name  = 'wall';
+	// 	wall2.position.set(0, -110, 100);
+	// 	wall2.castShadow    = true;
+	// 	wall2.receiveShadow = true;
+	// 	aScene.add(wall2);
+	//
+	// 	// Right wall
+	// 	const wall3 = new THREE.Mesh(
+	// 		new THREE.BoxGeometry(4, 200, 200),
+	// 		concreteMaterial);
+	// 	wall3.name  = 'wall';
+	// 	wall3.position.set(-100, -110, 0);
+	// 	wall3.castShadow    = true;
+	// 	wall3.receiveShadow = true;
+	// 	aScene.add(wall3);
+	//
+	// 	// Left wall
+	// 	const wall4 = new THREE.Mesh(
+	// 		new THREE.BoxGeometry(4, 200, 200),
+	// 		concreteMaterial);
+	// 	wall4.name  = 'wall';
+	// 	wall4.position.set(100, -110, 0);
+	// 	wall4.castShadow    = true;
+	// 	wall4.receiveShadow = true;
+	// 	aScene.add(wall4);
+	//
+	//
+	// 	const meshes  = [plane, wall1, wall2, wall3, wall4];
+	// 	const objects = [];
+	// 	for (let i = 0; i < meshes.length; ++i) {
+	// 		const b = new THREE.Box3().setFromObject(meshes[i]);
+	// 		objects.push(b);
+	// 	}
+	//
+	// 	// for (let i = camera.position; i < meshes.length; ++i) {
+	// 	// 	const b = new THREE.Box3();
+	// 	// 	b.setFromObject(meshes[i]);
+	// 	// 	objects.push(b);
+	// 	// }
+	//
+	// 	return aScene;
+	// }
 
-		texture.encoding                = THREE.sRGBEncoding;
-		aScene.background               = texture;
-		aScene.background.lightingColor = '#9B7441';
-		// aScene1.background.intensity
-		const light                     = new THREE.AmbientLight(0x404040); // soft white light
-		light.intensity                 = 10;
-		aScene.add(light);
-
-		const mapLoader     = new THREE.TextureLoader();
-		const maxAnisotropy = renderer.capabilities.getMaxAnisotropy();
-
-		const trak_base      = mapLoader.load('resources/tileKit/trak_base.jpg');
-		trak_base.anisotropy = maxAnisotropy;
-		trak_base.wrapS      = THREE.RepeatWrapping;
-		trak_base.wrapT      = THREE.RepeatWrapping;
-		trak_base.repeat.set(32, 32);
-		trak_base.encoding = THREE.sRGBEncoding;
-
-		const plane         = new THREE.Mesh(
-			new THREE.PlaneGeometry(1000, 1000, 10, 10),
-			new THREE.MeshStandardMaterial({map: trak_base}));
-		plane.castShadow    = false;
-		plane.receiveShadow = true;
-		plane.rotation.x    = -Math.PI / 2;
-		aScene.add(plane);
-
-		const concreteMaterial = loadMaterial_('concrete3-', 4);
-
-		// Back wall
-		const wall1 = new THREE.Mesh(
-			new THREE.BoxGeometry(200, 200, 4),
-			concreteMaterial);
-		wall1.name  = 'wall';
-		wall1.position.set(0, -110, -100);
-		wall1.castShadow    = true;
-		wall1.receiveShadow = true;
-		aScene.add(wall1);
-
-		// Forward wall
-		const wall2 = new THREE.Mesh(
-			new THREE.BoxGeometry(200, 200, 4),
-			concreteMaterial);
-		wall2.name  = 'wall';
-		wall2.position.set(0, -110, 100);
-		wall2.castShadow    = true;
-		wall2.receiveShadow = true;
-		aScene.add(wall2);
-
-		// Right wall
-		const wall3 = new THREE.Mesh(
-			new THREE.BoxGeometry(4, 200, 200),
-			concreteMaterial);
-		wall3.name  = 'wall';
-		wall3.position.set(-100, -110, 0);
-		wall3.castShadow    = true;
-		wall3.receiveShadow = true;
-		aScene.add(wall3);
-
-		// Left wall
-		const wall4 = new THREE.Mesh(
-			new THREE.BoxGeometry(4, 200, 200),
-			concreteMaterial);
-		wall4.name  = 'wall';
-		wall4.position.set(100, -110, 0);
-		wall4.castShadow    = true;
-		wall4.receiveShadow = true;
-		aScene.add(wall4);
-
-
-		const meshes  = [plane, wall1, wall2, wall3, wall4];
-		const objects = [];
-		for (let i = 0; i < meshes.length; ++i) {
-			const b = new THREE.Box3().setFromObject(meshes[i]);
-			objects.push(b);
-		}
-
-		// for (let i = camera.position; i < meshes.length; ++i) {
-		// 	const b = new THREE.Box3();
-		// 	b.setFromObject(meshes[i]);
-		// 	objects.push(b);
-		// }
-
-		return aScene
-	}
-
+/*
 
 	function initializeLights_() {
 		const distance = 50.0;
@@ -517,7 +616,7 @@ function HellScene(canvas) {
 		light.shadow.camera.far     = 100;
 
 		light.position.set(25, 25, 0);
-		light.lookAt(0, 0, 0);
+		light.lookAt(10, 5, 0);
 		scene.add(light);
 
 		const upColour   = 0xFFFF80;
@@ -567,6 +666,7 @@ function HellScene(canvas) {
 		});
 
 	}
+*/
 
 
 
@@ -643,14 +743,19 @@ function HellScene(canvas) {
 
 
 
+
 	this.update = function (time) {
 		if (controls.isLocked === true) {
 			// console.log(camera.)
+			if (firstStart) {
+				time.start();
+				firstStart = false;
+			}
 			if (isPlayable === true && isPlaying !== true) {
 				playMusicAudio();
 			}
-			const delta = (time - prevTime) / 1000;
-			updateSequence(delta)
+			const delta = time.getDelta() / 2;
+			SCENE_.update(currentSong.currentTime)
 
 			velocity.x -= velocity.x * 10.0 * delta;
 			velocity.z -= velocity.z * 10.0 * delta;
@@ -668,53 +773,65 @@ function HellScene(canvas) {
 				velocity.x -= direction.x * 400.0 * delta;
 			}
 
-			controls.moveRight(-velocity.x * delta);
-			controls.moveForward(-velocity.z * delta);
+			let dz = controls.getObject().position.z + (-velocity.z * delta);
+			let dx = controls.getObject().position.x + (-velocity.x * delta);
+			if (currentScene === 0) {
+				if (dx > -95 && dx < 95) {
+					controls.moveRight(-velocity.x * delta);
+				}
+				else {
+					if (dx >= 95 && moveLeft) {
+						controls.moveRight(-velocity.x * delta);
+					}
+					if (dx <= -95 && moveRight) {
+						controls.moveRight(-velocity.x * delta);
+					}
+				}
+
+
+				if (dz > -95 && dz < 95) {
+					controls.moveForward(-velocity.z * delta);
+				}
+				else {
+					if (dz >= 95 && velocity.z < 0) {
+						controls.moveForward(-velocity.z * delta);
+					}
+					if (dz <= -95 && velocity.z > 0) {
+						controls.moveForward(-velocity.z * delta);
+					}
+				}
+			}
+
 
 			controls.getObject().position.y += (velocity.y * delta); // new behavior
 
-			if (controls.getObject().position.y < 10) {
+			if (controls.getObject().position.y < 4) {
 
 				velocity.y                      = 0;
-				controls.getObject().position.y = 10;
+				controls.getObject().position.y = 4;
 
 				canJump = true;
 			}
 		}
 		else {
-			pauseMusicAudio();
+			// SCENE_.pauseMusicAudio();
+			time.stop();
 		}
 
-		prevTime = time;
+		console.log(controls.getObject().position.x, controls.getObject().position.z)
 		renderer.render(scene, camera);
 	}
 }
 
 
-
-
-// function step_(timeElapsed) {
-// 	// Step speed
-// 	const timeElapsedS = timeElapsed * 0.00050;
-// 	firstPersonCamera.update(timeElapsedS);
-// 	// // console.log(camera.position);
-//
-// }
-
-
-
-const canvas    = document.getElementById("canvas");
-const hellscene = new HellScene(canvas);
+const canvas     = document.getElementById("canvas");
+const manager = new SequenceManager();
+// manager.init(canvas);
 
 
 function animate() {
 	requestAnimationFrame(animate);
-	const time = performance.now();
-
-	hellscene.update(time);
-
+	manager.update(time);
 }
-
-
 animate();
 
