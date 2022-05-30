@@ -573,23 +573,24 @@ export class ThirdPersonCamera {
 
 
 
-export class ThirdPersonCameraDemo {
+export class ThirdPersonCameraFactory {
 	constructor(params) {
 		this.params = params;
-		this._Initialize();
+		// await this._Initialize();
 	}
 
 
-	_Initialize() {
-		this._threejs                   = this.params.renderer;
-		this._camera = this.params.camera;
-		this._scene = this.params.scene;
+	async _Initialize() {
+		this._threejs = this.params.renderer;
+		this._camera  = this.params.camera;
+		this._scene   = this.params.scene;
 
 		this._mixers      = [];
 		this._previousRAF = null;
 
-		this._LoadAnimatedModel();
+		await this._LoadAnimatedModel();
 		// this.update();
+		return true;
 	}
 
 
