@@ -2,6 +2,9 @@
   "name": "DigitalStory",
   "version": "1.0.0",
   "dependencies": {
+    "debounce": "^1.2.1",
+    "lodash-es": "^4.17.21",
+    "lodash.debounce": "^4.0.8",
     "three": "^0.140.2",
     "three-obj-mtl-loader": "^1.0.3"
   }

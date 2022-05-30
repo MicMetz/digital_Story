@@ -9,8 +9,11 @@ import {OrbitControls}       from 'OrbitControls';
 
 function HellScene(camera_, scene_, renderer_, controls_, userinterfaceCamera, userinterfaceScene, canvas_) {
 	const renderer = renderer_;
-	const scene    =  scene_;
-	const camera   = buildCamera(camera_);
+	const scene    = scene_;
+	var camera = camera_;
+	// const renderer = renderer_;
+	// const scene    = character_._scene;
+	// const camera = character_._camera;
 	buildScene();
 
 	// var song1 = 'resources/audio/music/Glass.mp3'.toString();
@@ -58,7 +61,7 @@ function HellScene(camera_, scene_, renderer_, controls_, userinterfaceCamera, u
 		const mapLoader     = new THREE.TextureLoader();
 		const maxAnisotropy = renderer.capabilities.getMaxAnisotropy();
 
-		const trak_base      = mapLoader.load('resources/tileKit/trak_base.jpg');
+		const trak_base      = mapLoader.load('../resources/tileKit/trak_base.jpg');
 		trak_base.anisotropy = maxAnisotropy;
 		trak_base.wrapS      = THREE.RepeatWrapping;
 		trak_base.wrapT      = THREE.RepeatWrapping;
@@ -133,18 +136,19 @@ function HellScene(camera_, scene_, renderer_, controls_, userinterfaceCamera, u
 	}
 
 
-	function buildCamera(camera_) {
-		const fov     = 60;
-		const aspect  = 1920 / 1080;
-		const near    = 1.0;
-		const far     = 1500.0;
-		const aCamera = new THREE.PerspectiveCamera(fov, aspect, near, far);
-		aCamera.position.set(0, 2, 0);
-		// aCamera.lookAt(new THREE.Vector3(-20, -20, -15));
-		userinterfaceCamera = new THREE.OrthographicCamera(-1, 1, 1 * aspect, -1 * aspect, 1, 1500);
-		userinterfaceScene  = new THREE.Scene();
-		return aCamera;
-	}
+	// function buildCamera(camera_) {
+	// 	const fov     = 60;
+	// 	const aspect  = 1920 / 1080;
+	// 	const near    = 1.0;
+	// 	const far     = 1500.0;
+	// 	camera = new THREE.PerspectiveCamera(fov, aspect, near, far);
+	// 	camera.position.set( 0, 20, 50 );
+	// 	// aCamera.lookAt(new THREE.Vector3(-20, -20, -15));
+	// 	scene.add(camera);
+	// 	userinterfaceCamera = new THREE.OrthographicCamera(-1, 1, 1 * aspect, -1 * aspect, 1, 1500);
+	// 	userinterfaceScene  = new THREE.Scene();
+	// 	return camera;
+	// }
 
 
 

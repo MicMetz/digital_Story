@@ -4,8 +4,8 @@ import {PointerLockControls} from "PointerLockControls";
 import {OrbitControls}       from "OrbitControls";
 import {TWEEN}               from "TWEEN";
 import {OceanScene}          from "./scenes/OceanScene.js";
-import {HellScene}          from "./scenes/HellScene.js";
-
+import {HellScene}                                                          from "./scenes/HellScene.js";
+import {BasicCharacterController, ThirdPersonCameraDemo, ThirdPersonCamera} from "./components/Character.js"
 
 
 
@@ -91,7 +91,7 @@ const onKeyUp = function (event) {
 
 };
 
-var camera             = null;
+// var camera             = null;
 var userinterfaceScene = null;
 var userinterfaceCamera;
 var firstPersonCamera;
@@ -143,7 +143,11 @@ function SequenceManager() {
 
 	const renderer = buildRenderer(canvas);
 	const scene    = buildScene();
-	const camera   = buildCamera();
+	const camera = buildCamera();
+	const params = {
+		renderer, camera, scene
+	};
+	const character = new ThirdPersonCameraDemo(params);
 	// const firstPersonCamera         = buildPerson();
 	// const orbitCon  = setOrbitControls();
 	// var manitou     = loadManitou_();
@@ -158,20 +162,20 @@ function SequenceManager() {
 	}
 
 	function buildRenderer(canvas_) {
-		const renderer             = new THREE.WebGLRenderer({
+		const rend             = new THREE.WebGLRenderer({
 			antialias: false,
 		});
-		renderer.shadowMap.enabled = true;
-		renderer.shadowMap.type    = THREE.PCFSoftShadowMap;
-		renderer.setPixelRatio(window.devicePixelRatio);
-		renderer.setSize(window.innerWidth, window.innerHeight);
-		renderer.physicallyCorrectLights = true;
-		renderer.outputEncoding          = THREE.sRGBEncoding;
-		renderer.gammaFactor             = 1.2;
-		renderer.gammaOutput             = 2.2;
-		canvas_.appendChild(renderer.domElement);
+		rend.shadowMap.enabled = true;
+		rend.shadowMap.type    = THREE.PCFSoftShadowMap;
+		rend.setPixelRatio(window.devicePixelRatio);
+		rend.setSize(window.innerWidth, window.innerHeight);
+		rend.physicallyCorrectLights = true;
+		rend.outputEncoding          = THREE.sRGBEncoding;
+		rend.gammaFactor             = 1.2;
+		rend.gammaOutput             = 2.2;
+		canvas_.appendChild(rend.domElement);
 		// loadedRender = true;
-		return renderer;
+		return rend;
 
 	}
 
@@ -492,12 +496,12 @@ function SequenceManager() {
 		const aspect  = 1920 / 1080;
 		const near    = 1.0;
 		const far     = 1500.0;
-		const aCamera = new THREE.PerspectiveCamera(fov, aspect, near, far);
-		aCamera.position.set(0, 2, 0);
+		const _camera = new THREE.PerspectiveCamera(fov, aspect, near, far);
+		_camera.position.set(0, 2, 0);
 		// aCamera.lookAt(new THREE.Vector3(-20, -20, -15));
 		userinterfaceCamera = new THREE.OrthographicCamera(-1, 1, 1 * aspect, -1 * aspect, 1, 1500);
 		userinterfaceScene  = new THREE.Scene();
-		return aCamera;
+		return _camera;
 	}
 
 
@@ -755,22 +759,24 @@ function SequenceManager() {
 				playMusicAudio();
 			}
 			const delta = time.getDelta() / 2;
+			character._Step(delta);
 			SCENE_.update(currentSong.currentTime)
 
+/*
 			velocity.x -= velocity.x * 10.0 * delta;
 			velocity.z -= velocity.z * 10.0 * delta;
 
-			velocity.y -= 9.8 * 100.0 * delta; // 100.0 = mass
+			velocity.y -= 9.8 * 400.0 * delta; // 1000.0 = mass
 
 			direction.z = Number(moveForward) - Number(moveBackward);
 			direction.x = Number(moveRight) - Number(moveLeft);
 			direction.normalize(); // this ensures consistent movements in all directions
 
 			if (moveForward || moveBackward) {
-				velocity.z -= direction.z * 400.0 * delta;
+				velocity.z -= direction.z * 50.0 * delta;
 			}
 			if (moveLeft || moveRight) {
-				velocity.x -= direction.x * 400.0 * delta;
+				velocity.x -= direction.x * 50.0 * delta;
 			}
 
 			let dz = controls.getObject().position.z + (-velocity.z * delta);
@@ -805,20 +811,20 @@ function SequenceManager() {
 
 			controls.getObject().position.y += (velocity.y * delta); // new behavior
 
-			if (controls.getObject().position.y < 4) {
+			if (controls.getObject().position.y < 2) {
 
 				velocity.y                      = 0;
-				controls.getObject().position.y = 4;
+				controls.getObject().position.y = 2;
 
 				canJump = true;
-			}
+			}*/
 		}
 		else {
 			// SCENE_.pauseMusicAudio();
 			time.stop();
 		}
 
-		console.log(controls.getObject().position.x, controls.getObject().position.z)
+		console.log(character._controls.Position, character._controls.Rotation);
 		renderer.render(scene, camera);
 	}
 }

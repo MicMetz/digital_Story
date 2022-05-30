@@ -1,260 +1,290 @@
-
-import * as THREE from 'three';
-import { OrbitControls } from './jsm/controls/OrbitControls.js';
-
-let camera, scene, renderer, bulbLight, bulbMat, hemiLight, stats;
-let ballMat, cubeMat, floorMat;
-
-let previousShadowMap = false;
+import * as THREE            from 'three';
+import {GLTFLoader}          from 'GLTFLoader';
+import {PointerLockControls} from "PointerLockControls";
+import {TWEEN}               from "TWEEN";
+import {OrbitControls}       from 'OrbitControls';
 
 
-// ref for lumens: http://www.power-sure.com/lumens.htm
-const bulbLuminousPowers = {
-	"110000 lm (1000W)": 110000,
-	"3500 lm (300W)": 3500,
-	"1700 lm (100W)": 1700,
-	"800 lm (60W)": 800,
-	"400 lm (40W)": 400,
-	"180 lm (25W)": 180,
-	"20 lm (4W)": 20,
-	"Off": 0
-};
+var renderer = new THREE.WebGLRenderer({antialias:true});
+renderer.setSize( window.innerWidth, window.innerHeight );
 
-// ref for solar irradiances: https://en.wikipedia.org/wiki/Lux
-const hemiLuminousIrradiances = {
-	"0.0001 lx (Moonless Night)": 0.0001,
-	"0.002 lx (Night Airglow)": 0.002,
-	"0.5 lx (Full Moon)": 0.5,
-	"3.4 lx (City Twilight)": 3.4,
-	"50 lx (Living Room)": 50,
-	"100 lx (Very Overcast)": 100,
-	"350 lx (Office Room)": 350,
-	"400 lx (Sunrise/Sunset)": 400,
-	"1000 lx (Overcast)": 1000,
-	"18000 lx (Daylight)": 18000,
-	"50000 lx (Direct Sun)": 50000
-};
-
-const params = {
-	shadows: true,
-	exposure: 0.68,
-	bulbPower: Object.keys( bulbLuminousPowers )[ 4 ],
-	hemiIrradiance: Object.keys( hemiLuminousIrradiances )[ 0 ]
-};
-
-init();
-animate();
-
-function init() {
-
-	const container = document.getElementById( 'canvas' );
-
-	function getCamera() {
-		camera            = new THREE.PerspectiveCamera(50, window.innerWidth / window.innerHeight, 0.1, 100);
-		camera.position.x = -4;
-		camera.position.z = 4;
-		camera.position.y = 2;
-	}
-
-	scene = new THREE.Scene();
-
-	const bulbGeometry = new THREE.SphereGeometry( 0.02, 16, 8 );
-	bulbLight = new THREE.PointLight( 0xffee88, 1, 100, 2 );
-
-	bulbMat = new THREE.MeshStandardMaterial( {
-		emissive: 0xffffee,
-		emissiveIntensity: 1,
-		color: 0x000000
-	} );
-	bulbLight.add( new THREE.Mesh( bulbGeometry, bulbMat ) );
-	bulbLight.position.set( 0, 2, 0 );
-	bulbLight.castShadow = true;
-	scene.add( bulbLight );
-
-	hemiLight = new THREE.HemisphereLight( 0xddeeff, 0x0f0e0d, 0.02 );
-	scene.add( hemiLight );
-
-	floorMat = new THREE.MeshStandardMaterial( {
-		roughness: 0.8,
-		color: 0xffffff,
-		metalness: 0.2,
-		bumpScale: 0.0005
-	} );
-	const textureLoader = new THREE.TextureLoader();
-	textureLoader.load( "textures/hardwood2_diffuse.jpg", function ( map ) {
-
-		map.wrapS = THREE.RepeatWrapping;
-		map.wrapT = THREE.RepeatWrapping;
-		map.anisotropy = 4;
-		map.repeat.set( 10, 24 );
-		map.encoding = THREE.sRGBEncoding;
-		floorMat.map = map;
-		floorMat.needsUpdate = true;
-
-	} );
-	textureLoader.load( "textures/hardwood2_bump.jpg", function ( map ) {
-
-		map.wrapS = THREE.RepeatWrapping;
-		map.wrapT = THREE.RepeatWrapping;
-		map.anisotropy = 4;
-		map.repeat.set( 10, 24 );
-		floorMat.bumpMap = map;
-		floorMat.needsUpdate = true;
-
-	} );
-	textureLoader.load( "textures/hardwood2_roughness.jpg", function ( map ) {
-
-		map.wrapS = THREE.RepeatWrapping;
-		map.wrapT = THREE.RepeatWrapping;
-		map.anisotropy = 4;
-		map.repeat.set( 10, 24 );
-		floorMat.roughnessMap = map;
-		floorMat.needsUpdate = true;
-
-	} );
-
-	cubeMat = new THREE.MeshStandardMaterial( {
-		roughness: 0.7,
-		color: 0xffffff,
-		bumpScale: 0.002,
-		metalness: 0.2
-	} );
-	textureLoader.load( "textures/brick_diffuse.jpg", function ( map ) {
-
-		map.wrapS = THREE.RepeatWrapping;
-		map.wrapT = THREE.RepeatWrapping;
-		map.anisotropy = 4;
-		map.repeat.set( 1, 1 );
-		map.encoding = THREE.sRGBEncoding;
-		cubeMat.map = map;
-		cubeMat.needsUpdate = true;
-
-	} );
-	textureLoader.load( "textures/brick_bump.jpg", function ( map ) {
-
-		map.wrapS = THREE.RepeatWrapping;
-		map.wrapT = THREE.RepeatWrapping;
-		map.anisotropy = 4;
-		map.repeat.set( 1, 1 );
-		cubeMat.bumpMap = map;
-		cubeMat.needsUpdate = true;
-
-	} );
-
-	ballMat = new THREE.MeshStandardMaterial( {
-		color: 0xffffff,
-		roughness: 0.5,
-		metalness: 1.0
-	} );
-	textureLoader.load( "textures/planets/earth_atmos_2048.jpg", function ( map ) {
-
-		map.anisotropy = 4;
-		map.encoding = THREE.sRGBEncoding;
-		ballMat.map = map;
-		ballMat.needsUpdate = true;
-
-	} );
-	textureLoader.load( "textures/planets/earth_specular_2048.jpg", function ( map ) {
-
-		map.anisotropy = 4;
-		map.encoding = THREE.sRGBEncoding;
-		ballMat.metalnessMap = map;
-		ballMat.needsUpdate = true;
-
-	} );
-
-	const floorGeometry = new THREE.PlaneGeometry( 20, 20 );
-	const floorMesh = new THREE.Mesh( floorGeometry, floorMat );
-	floorMesh.receiveShadow = true;
-	floorMesh.rotation.x = - Math.PI / 2.0;
-	scene.add( floorMesh );
-
-	const ballGeometry = new THREE.SphereGeometry( 0.25, 32, 32 );
-	const ballMesh = new THREE.Mesh( ballGeometry, ballMat );
-	ballMesh.position.set( 1, 0.25, 1 );
-	ballMesh.rotation.y = Math.PI;
-	ballMesh.castShadow = true;
-	scene.add( ballMesh );
-
-	const boxGeometry = new THREE.BoxGeometry( 0.5, 0.5, 0.5 );
-	const boxMesh = new THREE.Mesh( boxGeometry, cubeMat );
-	boxMesh.position.set( - 0.5, 0.25, - 1 );
-	boxMesh.castShadow = true;
-	scene.add( boxMesh );
-
-	const boxMesh2 = new THREE.Mesh( boxGeometry, cubeMat );
-	boxMesh2.position.set( 0, 0.25, - 5 );
-	boxMesh2.castShadow = true;
-	scene.add( boxMesh2 );
-
-	const boxMesh3 = new THREE.Mesh( boxGeometry, cubeMat );
-	boxMesh3.position.set( 7, 0.25, 0 );
-	boxMesh3.castShadow = true;
-	scene.add( boxMesh3 );
-
-
-	renderer = new THREE.WebGLRenderer();
-	renderer.physicallyCorrectLights = true;
-	renderer.outputEncoding = THREE.sRGBEncoding;
+if (window.innerWidth > 800) {
 	renderer.shadowMap.enabled = true;
-	renderer.toneMapping = THREE.ReinhardToneMapping;
-	renderer.setPixelRatio( window.devicePixelRatio );
-	renderer.setSize( window.innerWidth, window.innerHeight );
-	container.appendChild( renderer.domElement );
+	renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+	renderer.shadowMap.needsUpdate = true;
+	//renderer.toneMapping = THREE.ReinhardToneMapping;
+	//console.log(window.innerWidth);
+};
+//---
 
+document.body.appendChild( renderer.domElement );
 
-	const controls = new OrbitControls( camera, renderer.domElement );
-	controls.minDistance = 1;
-	controls.maxDistance = 20;
-
-	window.addEventListener( 'resize', onWindowResize );
-
-}
-
+window.addEventListener('resize', onWindowResize, false);
 function onWindowResize() {
-
 	camera.aspect = window.innerWidth / window.innerHeight;
 	camera.updateProjectionMatrix();
-
 	renderer.setSize( window.innerWidth, window.innerHeight );
+};
+
+var camera = new THREE.PerspectiveCamera( 20, window.innerWidth / window.innerHeight, 1, 500 );
+
+camera.position.set(0, 2, 14);
+
+var scene = new THREE.Scene();
+var city = new THREE.Object3D();
+var smoke = new THREE.Object3D();
+var town = new THREE.Object3D();
+
+var createCarPos = true;
+var uSpeed = 0.001;
+
+//----------------------------------------------------------------- FOG background
+
+var setcolor = 0xF02050;
+//var setcolor = 0xF2F111;
+//var setcolor = 0xFF6347;
+
+scene.background = new THREE.Color(setcolor);
+scene.fog = new THREE.Fog(setcolor, 10, 16);
+//scene.fog = new THREE.FogExp2(setcolor, 0.05);
+//----------------------------------------------------------------- RANDOM Function
+function mathRandom(num = 8) {
+	var numValue = - Math.random() * num + Math.random() * num;
+	return numValue;
+};
+//----------------------------------------------------------------- CHANGE bluilding colors
+var setTintNum = true;
+function setTintColor() {
+	if (setTintNum) {
+		setTintNum = false;
+		var setColor = 0x000000;
+	} else {
+		setTintNum = true;
+		var setColor = 0x000000;
+	};
+	//setColor = 0x222222;
+	return setColor;
+};
+
+//----------------------------------------------------------------- CREATE City
+
+function init() {
+	var segments = 2;
+	for (var i = 1; i<100; i++) {
+		var geometry = new THREE.BufferGeometry(1,0,0,segments,segments,segments);
+		var material = new THREE.MeshStandardMaterial({
+			color:setTintColor(),
+			wireframe:false,
+			//opacity:0.9,
+			//transparent:true,
+			//roughness: 0.3,
+			//metalness: 1,
+			flatShading: THREE.SmoothShading,
+			// shading: THREE.SmoothShading,
+			//shading:THREE.FlatShading,
+			side:THREE.DoubleSide});
+		var wmaterial = new THREE.MeshLambertMaterial({
+			color:0xFFFFFF,
+			wireframe:true,
+			transparent:true,
+			opacity: 0.03,
+			side:THREE.DoubleSide/*,
+			 shading:THREE.FlatShading*/});
+
+		var cube = new THREE.Mesh(geometry, material);
+		var wire = new THREE.Mesh(geometry, wmaterial);
+		var floor = new THREE.Mesh(geometry, material);
+		var wfloor = new THREE.Mesh(geometry, wmaterial);
+
+		cube.add(wfloor);
+		cube.castShadow = true;
+		cube.receiveShadow = true;
+		cube.rotationValue = 0.1+Math.abs(mathRandom(8));
+
+		//floor.scale.x = floor.scale.z = 1+mathRandom(0.33);
+		floor.scale.y = 0.05;//+mathRandom(0.5);
+		cube.scale.y = 0.1+Math.abs(mathRandom(8));
+		//TweenMax.to(cube.scale, 1, {y:cube.rotationValue, repeat:-1, yoyo:true, delay:i*0.005, ease:Power1.easeInOut});
+		/*cube.setScale = 0.1+Math.abs(mathRandom());
+
+		 TweenMax.to(cube.scale, 4, {y:cube.setScale, ease:Elastic.easeInOut, delay:0.2*i, yoyo:true, repeat:-1});
+		 TweenMax.to(cube.position, 4, {y:cube.setScale / 2, ease:Elastic.easeInOut, delay:0.2*i, yoyo:true, repeat:-1});*/
+
+		var cubeWidth = 0.9;
+		cube.scale.x = cube.scale.z = cubeWidth+mathRandom(1-cubeWidth);
+		//cube.position.y = cube.scale.y / 2;
+		cube.position.x = Math.round(mathRandom());
+		cube.position.z = Math.round(mathRandom());
+
+		floor.position.set(cube.position.x, 0/*floor.scale.y / 2*/, cube.position.z)
+
+		town.add(floor);
+		town.add(cube);
+	};
+	//----------------------------------------------------------------- Particular
+
+	var gmaterial = new THREE.MeshToonMaterial({color:0xFFFF00, side:THREE.DoubleSide});
+	var gparticular = new THREE.CircleGeometry(0.01, 3);
+	var aparticular = 5;
+
+	for (var h = 1; h<300; h++) {
+		var particular = new THREE.Mesh(gparticular, gmaterial);
+		particular.position.set(mathRandom(aparticular), mathRandom(aparticular),mathRandom(aparticular));
+		particular.rotation.set(mathRandom(),mathRandom(),mathRandom());
+		smoke.add(particular);
+	};
+
+	var pmaterial = new THREE.MeshPhongMaterial({
+		color:0x000000,
+		side:THREE.DoubleSide,
+		// roughness: 10,
+		// metalness: 0.6,
+		opacity:0.9,
+		transparent:true});
+	var pgeometry = new THREE.PlaneGeometry(60,60);
+	var pelement = new THREE.Mesh(pgeometry, pmaterial);
+	pelement.rotation.x = -90 * Math.PI / 180;
+	pelement.position.y = -0.001;
+	pelement.receiveShadow = true;
+	//pelement.material.emissive.setHex(0xFFFFFF + Math.random() * 100000);
+
+	city.add(pelement);
+};
+
+//----------------------------------------------------------------- MOUSE function
+var raycaster = new THREE.Raycaster();
+var mouse = new THREE.Vector2(), INTERSECTED;
+var intersected;
+
+function onMouseMove(event) {
+	event.preventDefault();
+	mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+	mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+};
+function onDocumentTouchStart( event ) {
+	if ( event.touches.length == 1 ) {
+		event.preventDefault();
+		mouse.x = event.touches[ 0 ].pageX -  window.innerWidth / 2;
+		mouse.y = event.touches[ 0 ].pageY - window.innerHeight / 2;
+	};
+};
+function onDocumentTouchMove( event ) {
+	if (event.touches.length === 1 ) {
+		event.preventDefault();
+		mouse.x = event.touches[ 0 ].pageX -  window.innerWidth / 2;
+		mouse.y = event.touches[ 0 ].pageY - window.innerHeight / 2;
+	}
+}
+window.addEventListener('mousemove', onMouseMove, false);
+window.addEventListener('touchstart', onDocumentTouchStart, false );
+window.addEventListener('touchmove', onDocumentTouchMove, false );
+
+//----------------------------------------------------------------- Lights
+var ambientLight = new THREE.AmbientLight(0xFFFFFF, 4);
+var lightFront = new THREE.SpotLight(0xFFFFFF, 20, 10);
+var lightBack = new THREE.PointLight(0xFFFFFF, 0.5);
+
+var spotLightHelper = new THREE.SpotLightHelper( lightFront );
+//scene.add( spotLightHelper );
+
+lightFront.rotation.x = 45 * Math.PI / 180;
+lightFront.rotation.z = -45 * Math.PI / 180;
+lightFront.position.set(5, 5, 5);
+lightFront.castShadow = true;
+lightFront.shadow.mapSize.width = 6000;
+lightFront.shadow.mapSize.height = lightFront.shadow.mapSize.width;
+lightFront.penumbra = 0.1;
+lightBack.position.set(0,6,0);
+
+smoke.position.y = 2;
+
+scene.add(ambientLight);
+city.add(lightFront);
+scene.add(lightBack);
+scene.add(city);
+city.add(smoke);
+city.add(town);
+
+//----------------------------------------------------------------- GRID Helper
+var gridHelper = new THREE.GridHelper( 60, 120, 0xFF0000, 0x000000);
+city.add( gridHelper );
+
+//----------------------------------------------------------------- CAR world
+var generateCar = function() {
 
 }
+//----------------------------------------------------------------- LINES world
 
-//
+var createCars = function(cScale = 2, cPos = 20, cColor = 0xFFFF00) {
+	var cMat = new THREE.MeshToonMaterial({color:cColor, side:THREE.DoubleSide});
+	var cGeo = new THREE.BufferGeometry (1, cScale/40, cScale/40);
+	var cElem = new THREE.Mesh(cGeo, cMat);
+	var cAmp = 3;
 
-function animate() {
+	if (createCarPos) {
+		createCarPos = false;
+		cElem.position.x = -cPos;
+		cElem.position.z = (mathRandom(cAmp));
 
-	requestAnimationFrame( animate );
+		// TweenMax.to(cElem.position, 3, {x:cPos, repeat:-1, yoyo:true, delay:mathRandom(3)});
+	} else {
+		createCarPos = true;
+		cElem.position.x = (mathRandom(cAmp));
+		cElem.position.z = -cPos;
+		cElem.rotation.y = 90 * Math.PI / 180;
 
-	render();
+		// TweenMax.to(cElem.position, 5, {z:cPos, repeat:-1, yoyo:true, delay:mathRandom(3), ease:Power1.easeInOut});
+	};
+	cElem.receiveShadow = true;
+	cElem.castShadow = true;
+	cElem.position.y = Math.abs(mathRandom(5));
+	city.add(cElem);
+};
 
-}
+var generateLines = function() {
+	for (var i = 0; i<60; i++) {
+		createCars(0.1, 20);
+	};
+};
 
-function render() {
+//----------------------------------------------------------------- CAMERA position
 
-	renderer.toneMappingExposure = Math.pow( params.exposure, 5.0 ); // to allow for very bright scenes.
-	renderer.shadowMap.enabled = params.shadows;
-	bulbLight.castShadow = params.shadows;
+var cameraSet = function() {
+	createCars(0.1, 20, 0xFFFFFF);
+	//TweenMax.to(camera.position, 1, {y:1+Math.random()*4, ease:Expo.easeInOut})
+};
 
-	if ( params.shadows !== previousShadowMap ) {
+//----------------------------------------------------------------- ANIMATE
 
-		ballMat.needsUpdate = true;
-		cubeMat.needsUpdate = true;
-		floorMat.needsUpdate = true;
-		previousShadowMap = params.shadows;
+var animate = function() {
+	var time = Date.now() * 0.00005;
+	requestAnimationFrame(animate);
 
+	city.rotation.y -= ((mouse.x * 8) - camera.rotation.y) * uSpeed;
+	city.rotation.x -= (-(mouse.y * 2) - camera.rotation.x) * uSpeed;
+	if (city.rotation.x < -0.05) city.rotation.x = -0.05;
+	else if (city.rotation.x>1) city.rotation.x = 1;
+	var cityRotation = Math.sin(Date.now() / 5000) * 13;
+	//city.rotation.x = cityRotation * Math.PI / 180;
+
+	//console.log(city.rotation.x);
+	//camera.position.y -= (-(mouse.y * 20) - camera.rotation.y) * uSpeed;;
+
+	for ( let i = 0, l = town.children.length; i < l; i ++ ) {
+		var object = town.children[ i ];
+		//object.scale.y = Math.sin(time*50) * object.rotationValue;
+		//object.rotation.y = (Math.sin((time/object.rotationValue) * Math.PI / 180) * 180);
+		//object.rotation.z = (Math.cos((time/object.rotationValue) * Math.PI / 180) * 180);
 	}
 
-	bulbLight.power = bulbLuminousPowers[ params.bulbPower ];
-	bulbMat.emissiveIntensity = bulbLight.intensity / Math.pow( 0.02, 2.0 ); // convert from intensity to irradiance at bulb surface
+	smoke.rotation.y += 0.01;
+	smoke.rotation.x += 0.01;
 
-	hemiLight.intensity = hemiLuminousIrradiances[ params.hemiIrradiance ];
-	const time = Date.now() * 0.0005;
-
-	bulbLight.position.y = Math.cos( time ) * 0.75 + 1.25;
-
+	camera.lookAt(city.position);
 	renderer.render( scene, camera );
-
-	stats.update();
-
 }
+
+//----------------------------------------------------------------- START functions
+generateLines();
+init();
+animate();
